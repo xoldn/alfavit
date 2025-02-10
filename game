@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Алфавитная Игра</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+         body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+            background: linear-gradient(135deg, #1d1d1d, #3a3a3a);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            justify-content: center;
+            align-items: center;
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+        }
+        .letter {
+            font-size: 120px;
+            margin: 20px;
+            padding: 15px 30px;
+            border-radius: 12px;
+            background-color: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .score {
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+        }
+        .buttons {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+        }
+        button {
+            font-size: 1rem;
+            padding: 12px 25px;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        button:hover {
+            transform: scale(1.05);
+        }
+        .correct {
+            background-color: #28a745;
+            color: white;
+        }
+        .wrong {
+            background-color: #dc3545;
+            color: white;
+        }
+        .restart {
+            background-color: #007bff;
+            color: white;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Алфавитная Игра</h1>
+    <div class="letter" id="letter">?</div>
+    <div class="score" id="score">✅ 0 | ❌ 0</div>
+    <div class="buttons">
+        <button class="correct" id="correctBtn" onclick="handleAnswer(true)">✅ Правильно</button>
+        <button class="wrong" id="wrongBtn" onclick="handleAnswer(false)">❌ Неправильно</button>
+        <button class="restart hidden" id="restartBtn" onclick="restartWithWrongLetters()">🔄 Повторить ошибки</button>
+        <button class="restart hidden" id="newGameBtn" onclick="startNewGame()">🔄 Начать заново</button>
+    </div>
+    <script>
+        const letters = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ".split("");
+        let index = 0;
+        let correctCount = 0;
+        let wrongCount = 0;
+        let wrongLetters = [];
+        let isRestarting = false;
+        const letterDiv = document.getElementById("letter");
+        const scoreDiv = document.getElementById("score");
+        const correctBtn = document.getElementById("correctBtn");
+        const wrongBtn = document.getElementById("wrongBtn");
+        const restartBtn = document.getElementById("restartBtn");
+        const newGameBtn = document.getElementById("newGameBtn");
+
+        function nextLetter() {
+            if (index < (isRestarting ? wrongLetters.length : letters.length)) {
+                letterDiv.textContent = isRestarting ? wrongLetters[index] : letters[index];
+            } else {
+                endGame();
+            }
+        }
+
+        function handleAnswer(isCorrect) {
+            if (isCorrect) correctCount++;
+            else {
+                wrongCount++;
+                if (!isRestarting) wrongLetters.push(letters[index]);
+            }
+            index++;
+            updateScore();
+            nextLetter();
+        }
+
+        function updateScore() {
+            scoreDiv.textContent = `✅ ${correctCount} | ❌ ${wrongCount}`;
+        }
+
+        function endGame() {
+            letterDiv.innerHTML = `🎉 Игра окончена! <br> ✅ ${correctCount} | ❌ ${wrongCount} <br> Неправильные буквы: ${wrongLetters.join(", ")}`;
+            correctBtn.classList.add("hidden");
+            wrongBtn.classList.add("hidden");
+            restartBtn.classList.remove("hidden");
+            newGameBtn.classList.remove("hidden");
+            Telegram.WebApp.sendData(JSON.stringify({ correct: correctCount, wrong: wrongCount }));
+            Telegram.WebApp.close();
+        }
+
+        function restartWithWrongLetters() {
+            if (wrongLetters.length > 0) {
+                index = 0;
+                correctCount = 0;
+                wrongCount = 0;
+                isRestarting = true;
+                correctBtn.classList.remove("hidden");
+                wrongBtn.classList.remove("hidden");
+                restartBtn.classList.add("hidden");
+                newGameBtn.classList.add("hidden");
+                updateScore();
+                nextLetter();
+            } else {
+                alert("Нет неправильных букв для повторения!");
+            }
+        }
+
+        function startNewGame() {
+            index = 0;
+            correctCount = 0;
+            wrongCount = 0;
+            wrongLetters = [];
+            isRestarting = false;
+            correctBtn.classList.remove("hidden");
+            wrongBtn.classList.remove("hidden");
+            restartBtn.classList.add("hidden");
+            newGameBtn.classList.add("hidden");
+            updateScore();
+            nextLetter();
+        }
+
+        nextLetter();
+    </script>
+</body>
+</html>
