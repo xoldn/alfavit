@@ -228,7 +228,6 @@
     
     // Функция для запуска распознавания речи
     function startRecognition() {
-        // Проверяем поддержку SpeechRecognition
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) {
             alert("Ваш браузер не поддерживает распознавание речи.");
@@ -238,12 +237,13 @@
         recognition.lang = 'ru-RU';
         recognition.interimResults = false;
         recognition.maxAlternatives = 1;
-    
+
         recognition.start();
-    
-        recognition.onresult = function(event) {
-            let transcript = event.results[0][0].transcript.trim().toUpperCase();
-            // Сравнение распознанного результата с ожидаемой буквой
+
+        recognition.addEventListener("result", (event) => {
+            const transcript = event.results[0][0].transcript.trim().toUpperCase();
+            console.log("Распознанное слово:", transcript);
+            console.log("Ожидалась буква:", currentLetter);
             if (transcript === currentLetter) {
                 alert("Правильно!");
                 handleAnswer(true);
@@ -251,11 +251,17 @@
                 alert("Неправильно! Вы сказали: " + transcript);
                 handleAnswer(false);
             }
-        };
-    
-        recognition.onerror = function(event) {
+        });
+
+        recognition.addEventListener("error", (event) => {
             alert("Ошибка распознавания: " + event.error);
-        };
+        });
+
+        // Если распознавание завершилось без результата, переходим к следующей букве
+        recognition.addEventListener("end", () => {
+            // Если onresult не сработал, можем автоматически считать это ошибкой
+            // или можно оставить пустым, если onresult уже обработал событие.
+        });
     }
     
     // Запуск игры
