@@ -310,12 +310,11 @@
         alert("Ваш браузер не поддерживает распознавание речи.");
         return;
       }
+      
       const recognition = new SpeechRecognition();
       recognition.lang = 'ru-RU';
       recognition.interimResults = false;
       recognition.maxAlternatives = 1;
-      
-      recognition.start();
       
       recognition.addEventListener("result", (event) => {
         const transcript = event.results[0][0].transcript.trim().toUpperCase();
@@ -335,8 +334,11 @@
       });
       
       recognition.addEventListener("end", () => {
-        // Дополнительная обработка по завершении распознавания, если необходимо.
+        // Здесь можно добавить дополнительные действия по завершении распознавания, если необходимо.
       });
+      
+      // Запускаем распознавание после установки обработчиков
+      recognition.start();
     }
     
     // Запуск игры
