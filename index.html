@@ -1,223 +1,117 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Алфавитная Игра</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-          body {
-        font-family: 'Arial', sans-serif;
-        margin: 0;
-        padding: 0;
-        text-align: center;
-        background: linear-gradient(135deg, #1d1d1d, #3a3a3a);
-        color: #fff;
-        display: flex;
-        flex-direction: column;
-        min-height: 100vh;
-        justify-content: center;
-        align-items: center;
-    }
-    h1 {
-        font-size: 1.5rem;
-        margin-bottom: 20px;
-        text-shadow: 2px 2px 5px rgba(0,0,0,0.5);
-    }
-    .letter {
-        font-size: 120px;
-        margin: 20px;
-        padding: 15px 30px;
-        border-radius: 12px;
-        background-color: rgba(255, 255, 255, 0.1);
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-    }
-    .score {
-        font-size: 1.5rem;
-        margin-bottom: 30px;
-    }
-    .buttons {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 15px;
-    }
-    button {
-        font-size: 1rem;
-        padding: 12px 25px;
-        cursor: pointer;
-        border: none;
-        border-radius: 8px;
-        transition: background-color 0.3s, transform 0.2s;
-    }
-    button:hover {
-        transform: scale(1.05);
-    }
-    .correct {
-        background-color: #28a745;
-        color: white;
-    }
-    .wrong {
-        background-color: #dc3545;
-        color: white;
-    }
-    .restart {
-        background-color: #007bff;
-        color: white;
-    }
-    .hidden {
-        display: none;
-    }
-    .result {
-        font-size: 1.5rem; /* уменьшенный шрифт */
-        margin: 20px;
-        padding: 15px 30px;
-        border-radius: 12px;
-        background-color: rgba(255, 255, 255, 0.1);
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-    }
-    </style>
-</head>
-<body>
-    <h1>Алфавитная Игра</h1>
-    <div class="letter" id="letter">?</div>
-    <div class="score" id="score">✅ 0 | ❌ 0</div>
-    <div class="buttons">
-        <button class="correct" id="correctBtn" onclick="handleAnswer(true)">✅ Правильно</button>
-        <button class="wrong" id="wrongBtn" onclick="handleAnswer(false)">❌ Неправильно</button>
-        <button class="restart hidden" id="restartBtn" onclick="restartWithWrongLetters()">🔄 Повторить ошибки</button>
-        <button class="restart hidden" id="newGameBtn" onclick="startNewGame()">🔄 Начать заново</button>
-    </div>
-    <script>
-        // Исходный массив букв
-        const originalLetters = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ".split("");
+<!-- Добавляем новую кнопку "Произнести" в блок с кнопками -->
+<div class="buttons">
+    <button class="correct" id="correctBtn" onclick="handleAnswer(true)">✅ Правильно</button>
+    <button class="wrong" id="wrongBtn" onclick="handleAnswer(false)">❌ Неправильно</button>
+    <button class="speak" id="speakBtn" onclick="startRecognition()">🎤 Произнести</button>
+    <button class="restart hidden" id="restartBtn" onclick="restartWithWrongLetters()">🔄 Повторить ошибки</button>
+    <button class="restart hidden" id="newGameBtn" onclick="startNewGame()">🔄 Начать заново</button>
+</div>
+<script>
+    // Исходный массив букв
+    const originalLetters = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ".split("");
+    const vowels = ["А", "Е", "Ё", "И", "О", "У", "Ы", "Э", "Ю", "Я"];
+
+    let gameLetters = [];
+    let index = 0;
+    let correctCount = 0;
+    let wrongCount = 0;
+    let wrongLetters = [];
+    let isRestarting = false;
+    let currentLetter = ""; // Глобальная переменная для текущей буквы
+    const letterDiv = document.getElementById("letter");
+    const scoreDiv = document.getElementById("score");
+    const correctBtn = document.getElementById("correctBtn");
+    const wrongBtn = document.getElementById("wrongBtn");
+    const restartBtn = document.getElementById("restartBtn");
+    const newGameBtn = document.getElementById("newGameBtn");
     
-        // Переменная для случайного порядка игры
-        let gameLetters = [];
+    // Функция перемешивания массива
+    function shuffleArray(array) {
+        return array.slice().sort(() => Math.random() - 0.5);
+    }
     
-        let index = 0;
-        let correctCount = 0;
-        let wrongCount = 0;
-        let wrongLetters = [];
-        let isRestarting = false;
-        const letterDiv = document.getElementById("letter");
-        const scoreDiv = document.getElementById("score");
-        const correctBtn = document.getElementById("correctBtn");
-        const wrongBtn = document.getElementById("wrongBtn");
-        const restartBtn = document.getElementById("restartBtn");
-        const newGameBtn = document.getElementById("newGameBtn");
-        let newWrongLetters = []; // для отслеживания ошибок при повторе
+    // Инициализация новой игры со случайным порядком букв
+    function initNewGame() {
+        gameLetters = shuffleArray(originalLetters);
+    }
     
-        // Функция перемешивания массива
-        function shuffleArray(array) {
-            return array.slice().sort(() => Math.random() - 0.5);
-        }
-    
-        // Инициализация новой игры со случайным порядком букв
-        function initNewGame() {
-            gameLetters = shuffleArray(originalLetters);
-        }
-    
-        function nextLetter() {
-            if (isRestarting) {
-                if (index < wrongLetters.length) {
-                    letterDiv.textContent = wrongLetters[index];
-                } else {
-                    endGame();
-                }
+    function nextLetter() {
+        if (isRestarting) {
+            if (index < wrongLetters.length) {
+                currentLetter = wrongLetters[index];
             } else {
-                if (index < gameLetters.length) {
-                    letterDiv.textContent = gameLetters[index];
-                } else {
-                    endGame();
-                }
+                endGame();
+                return;
+            }
+        } else {
+            if (index < gameLetters.length) {
+                currentLetter = gameLetters[index];
+            } else {
+                endGame();
+                return;
             }
         }
+        // Вывод буквы с цветовой раскраской (гласные синие, согласные красные)
+        let color = vowels.includes(currentLetter) ? "blue" : "red";
+        letterDiv.innerHTML = `<span style="color: ${color};">${currentLetter}</span>`;
+    }
     
-        function handleAnswer(isCorrect) {
-            if (isRestarting) {
-                if (isCorrect) {
-                    correctCount++;
-                } else {
-                    wrongCount++;
-                    newWrongLetters.push(wrongLetters[index]);
-                }
+    function handleAnswer(isCorrect) {
+        if (isRestarting) {
+            if (isCorrect) {
+                correctCount++;
             } else {
-                if (isCorrect) {
-                    correctCount++;
-                } else {
-                    wrongCount++;
-                    wrongLetters.push(gameLetters[index]);
-                }
+                wrongCount++;
+                // для повторного раунда используем новые ошибки
+                // (если ребенок сбился, ошибка фиксируется)
+                // newWrongLetters.push(… можно добавить дополнительную логику)
             }
-            index++;
-            updateScore();
-            nextLetter();
-        }
-    
-        function updateScore() {
-            scoreDiv.textContent = `✅ ${correctCount} | ❌ ${wrongCount}`;
-        }
-    
-        function endGame() {
-            scoreDiv.classList.add("hidden");
-            letterDiv.classList.replace("letter", "result");
-            let wrongDisplay = "";
-            if (isRestarting) {
-                if (newWrongLetters.length > 0) {
-                    wrongDisplay = `<br> Неправильные буквы: ${newWrongLetters.join(", ")}`;
-                }
-                // Обновляем массив для повторения на новые ошибки
-                wrongLetters = newWrongLetters.slice();
-                newWrongLetters = [];
+        } else {
+            if (isCorrect) {
+                correctCount++;
             } else {
-                if (wrongLetters.length > 0) {
-                    wrongDisplay = `<br> Неправильные буквы: ${wrongLetters.join(", ")}`;
-                }
-            }
-            letterDiv.innerHTML = `🎉 Игра окончена! <br> ✅ ${correctCount} | ❌ ${wrongCount} ${wrongDisplay}`;
-            correctBtn.classList.add("hidden");
-            wrongBtn.classList.add("hidden");
-            // Показывать кнопку "Повторить ошибки" только если есть ошибки
-            if (wrongDisplay === "") {
-                restartBtn.classList.add("hidden");
-            } else {
-                restartBtn.classList.remove("hidden");
-            }
-            newGameBtn.classList.remove("hidden");
-            Telegram.WebApp.sendData(JSON.stringify({ correct: correctCount, wrong: wrongCount }));
-            Telegram.WebApp.close();
-        }
-    
-        function restartWithWrongLetters() {
-            if (wrongLetters.length > 0) {
-                // Перемешиваем ошибки перед повтором
-                wrongLetters = shuffleArray(wrongLetters);
-                index = 0;
-                correctCount = 0;
-                wrongCount = 0;
-                isRestarting = true;
-                newWrongLetters = []; // сброс ошибок для повтора
-                letterDiv.classList.replace("result", "letter");
-                scoreDiv.classList.remove("hidden");
-                correctBtn.classList.remove("hidden");
-                wrongBtn.classList.remove("hidden");
-                restartBtn.classList.add("hidden");
-                newGameBtn.classList.add("hidden");
-                updateScore();
-                nextLetter();
-            } else {
-                alert("Нет неправильных букв для повторения!");
+                wrongCount++;
+                wrongLetters.push(gameLetters[index]);
             }
         }
+        index++;
+        updateScore();
+        nextLetter();
+    }
     
-        function startNewGame() {
+    function updateScore() {
+        scoreDiv.textContent = `✅ ${correctCount} | ❌ ${wrongCount}`;
+    }
+    
+    function endGame() {
+        scoreDiv.classList.add("hidden");
+        letterDiv.classList.replace("letter", "result");
+        let wrongDisplay = "";
+        if (!isRestarting && wrongLetters.length > 0) {
+            wrongDisplay = `<br> Неправильные буквы: ${wrongLetters.join(", ")}`;
+        }
+        letterDiv.innerHTML = `🎉 Игра окончена! <br> ✅ ${correctCount} | ❌ ${wrongCount} ${wrongDisplay}`;
+        correctBtn.classList.add("hidden");
+        wrongBtn.classList.add("hidden");
+        // Показываем кнопку "Повторить ошибки" только если ошибки есть
+        if (wrongLetters.length === 0) {
+            restartBtn.classList.add("hidden");
+        } else {
+            restartBtn.classList.remove("hidden");
+        }
+        newGameBtn.classList.remove("hidden");
+        Telegram.WebApp.sendData(JSON.stringify({ correct: correctCount, wrong: wrongCount }));
+        Telegram.WebApp.close();
+    }
+    
+    function restartWithWrongLetters() {
+        if (wrongLetters.length > 0) {
+            // Перемешиваем ошибки перед повтором
+            wrongLetters = shuffleArray(wrongLetters);
             index = 0;
             correctCount = 0;
             wrongCount = 0;
-            wrongLetters = [];
-            isRestarting = false;
-            initNewGame(); // получаем случайный порядок букв
+            isRestarting = true;
             letterDiv.classList.replace("result", "letter");
             scoreDiv.classList.remove("hidden");
             correctBtn.classList.remove("hidden");
@@ -226,11 +120,61 @@
             newGameBtn.classList.add("hidden");
             updateScore();
             nextLetter();
+        } else {
+            alert("Нет неправильных букв для повторения!");
         }
+    }
     
-        // Запуск игры
+    function startNewGame() {
+        index = 0;
+        correctCount = 0;
+        wrongCount = 0;
+        wrongLetters = [];
+        isRestarting = false;
         initNewGame();
+        letterDiv.classList.replace("result", "letter");
+        scoreDiv.classList.remove("hidden");
+        correctBtn.classList.remove("hidden");
+        wrongBtn.classList.remove("hidden");
+        restartBtn.classList.add("hidden");
+        newGameBtn.classList.add("hidden");
+        updateScore();
         nextLetter();
-    </script>
-</body>
-</html>
+    }
+    
+    // Функция для запуска распознавания речи
+    function startRecognition() {
+        // Проверяем поддержку SpeechRecognition
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("Ваш браузер не поддерживает распознавание речи.");
+            return;
+        }
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'ru-RU';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+    
+        recognition.start();
+    
+        recognition.onresult = function(event) {
+            let transcript = event.results[0][0].transcript.trim().toUpperCase();
+            // Сравнение распознанного результата с ожидаемой буквой
+            if (transcript === currentLetter) {
+                alert("Правильно!");
+                handleAnswer(true);
+            } else {
+                alert("Неправильно! Вы сказали: " + transcript);
+                handleAnswer(false);
+            }
+        };
+    
+        recognition.onerror = function(event) {
+            alert("Ошибка распознавания: " + event.error);
+        };
+    }
+    
+    // Запуск игры
+    initNewGame();
+    nextLetter();
+</script>
