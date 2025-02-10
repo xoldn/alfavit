@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Слоговая Игра</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+      background: linear-gradient(135deg, #1d1d1d, #3a3a3a);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      justify-content: center;
+      align-items: center;
+    }
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 20px;
+      text-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+    }
+    .syllable {
+      font-size: 120px;
+      margin: 20px;
+      padding: 15px 30px;
+      border-radius: 12px;
+      background-color: rgba(255, 255, 255, 0.1);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+    .score {
+      font-size: 1.5rem;
+      margin-bottom: 30px;
+    }
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 15px;
+    }
+    button {
+      font-size: 1rem;
+      padding: 12px 25px;
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      transition: background-color 0.3s, transform 0.2s;
+    }
+    button:hover {
+      transform: scale(1.05);
+    }
+    .correct {
+      background-color: #28a745;
+      color: white;
+    }
+    .wrong {
+      background-color: #dc3545;
+      color: white;
+    }
+    .restart {
+      background-color: #007bff;
+      color: white;
+    }
+    .hidden {
+      display: none;
+    }
+    .result {
+      font-size: 1.5rem;
+      margin: 20px;
+      padding: 15px 30px;
+      border-radius: 12px;
+      background-color: rgba(255, 255, 255, 0.1);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+  </style>
+</head>
+<body>
+  <h1>Слоговая Игра</h1>
+  <div class="syllable" id="syllable">?</div>
+  <div class="score" id="score">✅ 0 | ❌ 0</div>
+  <div class="buttons">
+    <button class="correct" id="correctBtn" onclick="handleAnswer(true)">✅ Знаю</button>
+    <button class="wrong" id="wrongBtn" onclick="handleAnswer(false)">❌ Не знаю</button>
+    <button class="restart hidden" id="restartBtn" onclick="restartWithMistakes()">🔄 Повторить ошибки</button>
+    <button class="restart hidden" id="newGameBtn" onclick="startNewGame()">🔄 Начать заново</button>
+  </div>
+  <script>
+    // Массив слогов c очень большим количеством вариантов
+    const originalSyllables = [
+      "ба", "би", "бу", "бе", "бо",
+      "ва", "ви", "ву", "ве", "во",
+      "га", "ги", "гу", "ге", "го",
+      "да", "ди", "ду", "де", "до",
+      "жа", "жи", "жу", "же", "жо",
+      "ка", "ки", "ку", "ке", "ко",
+      "ла", "ли", "лу", "ле", "ло",
+      "ма", "ми", "му", "ме", "мо",
+      "на", "ни", "ну", "не", "но",
+      "па", "пи", "пу", "пе", "по",
+      "ра", "ри", "ру", "ре", "ро",
+      "са", "си", "су", "се", "со",
+      "та", "ти", "ту", "те", "то",
+      "фа", "фи", "фу", "фе", "фо",
+      "ха", "хи", "ху", "хе", "хо",
+      "ца", "ци", "цу", "це", "цо",
+      "ча", "чи", "чу", "че", "чо",
+      "ша", "ши", "шу", "ше", "шо",
+      "ща", "щи", "щу", "ще", "що"
+    ];
+    
+    let gameSyllables = [];
+    let index = 0;
+    let correctCount = 0;
+    let wrongCount = 0;
+    let wrongSyllables = [];
+    let isRestarting = false;
+    const syllableDiv = document.getElementById("syllable");
+    const scoreDiv = document.getElementById("score");
+    const correctBtn = document.getElementById("correctBtn");
+    const wrongBtn = document.getElementById("wrongBtn");
+    const restartBtn = document.getElementById("restartBtn");
+    const newGameBtn = document.getElementById("newGameBtn");
+    let newWrongSyllables = []; // для отслеживания ошибок при повторе
+    
+    // Перемешивание массива
+    function shuffleArray(array) {
+      return array.slice().sort(() => Math.random() - 0.5);
+    }
+    
+    // Инициализация новой игры
+    function initNewGame() {
+      gameSyllables = shuffleArray(originalSyllables);
+    }
+    
+    function nextSyllable() {
+      let current;
+      if (isRestarting) {
+        if (index < wrongSyllables.length) {
+          current = wrongSyllables[index];
+        } else {
+          endGame();
+          return;
+        }
+      } else {
+        if (index < gameSyllables.length) {
+          current = gameSyllables[index];
+        } else {
+          endGame();
+          return;
+        }
+      }
+      syllableDiv.textContent = current;
+    }
+    
+    function handleAnswer(isKnown) {
+      if (isRestarting) {
+        if (isKnown) {
+          correctCount++;
+        } else {
+          wrongCount++;
+          newWrongSyllables.push(wrongSyllables[index]);
+        }
+      } else {
+        if (isKnown) {
+          correctCount++;
+        } else {
+          wrongCount++;
+          wrongSyllables.push(gameSyllables[index]);
+        }
+      }
+      index++;
+      updateScore();
+      nextSyllable();
+    }
+    
+    function updateScore() {
+      scoreDiv.textContent = `✅ ${correctCount} | ❌ ${wrongCount}`;
+    }
+    
+    function endGame() {
+      scoreDiv.classList.add("hidden");
+      syllableDiv.classList.replace("syllable", "result");
+      let wrongDisplay = "";
+      if (isRestarting) {
+        if (newWrongSyllables.length > 0) {
+          wrongDisplay = `<br> Ошибки: ${newWrongSyllables.join(", ")}`;
+        }
+        wrongSyllables = newWrongSyllables.slice();
+        newWrongSyllables = [];
+      } else {
+        if (wrongSyllables.length > 0) {
+          wrongDisplay = `<br> Ошибки: ${wrongSyllables.join(", ")}`;
+        }
+      }
+      syllableDiv.innerHTML = `🎉 Игра окончена! <br>✅ ${correctCount} | ❌ ${wrongCount} ${wrongDisplay}`;
+      correctBtn.classList.add("hidden");
+      wrongBtn.classList.add("hidden");
+      if (wrongDisplay === "") {
+        restartBtn.classList.add("hidden");
+      } else {
+        restartBtn.classList.remove("hidden");
+      }
+      newGameBtn.classList.remove("hidden");
+      Telegram.WebApp.sendData(JSON.stringify({ correct: correctCount, wrong: wrongCount }));
+      Telegram.WebApp.close();
+    }
+    
+    function restartWithMistakes() {
+      if (wrongSyllables.length > 0) {
+        wrongSyllables = shuffleArray(wrongSyllables);
+        index = 0;
+        correctCount = 0;
+        wrongCount = 0;
+        isRestarting = true;
+        newWrongSyllables = [];
+        syllableDiv.classList.replace("result", "syllable");
+        scoreDiv.classList.remove("hidden");
+        correctBtn.classList.remove("hidden");
+        wrongBtn.classList.remove("hidden");
+        restartBtn.classList.add("hidden");
+        newGameBtn.classList.add("hidden");
+        updateScore();
+        nextSyllable();
+      } else {
+        alert("Нет ошибок для повторения!");
+      }
+    }
+    
+    function startNewGame() {
+      index = 0;
+      correctCount = 0;
+      wrongCount = 0;
+      wrongSyllables = [];
+      isRestarting = false;
+      initNewGame();
+      syllableDiv.classList.replace("result", "syllable");
+      scoreDiv.classList.remove("hidden");
+      correctBtn.classList.remove("hidden");
+      wrongBtn.classList.remove("hidden");
+      restartBtn.classList.add("hidden");
+      newGameBtn.classList.add("hidden");
+      updateScore();
+      nextSyllable();
+    }
+    
+    // Запуск игры
+    initNewGame();
+    nextSyllable();
+  </script>
+</body>
+</html>
