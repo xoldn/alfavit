@@ -1,4 +1,88 @@
-<!-- Добавляем новую кнопку "Произнести" в блок с кнопками -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Алфавитная Игра</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+          body {
+        font-family: 'Arial', sans-serif;
+        margin: 0;
+        padding: 0;
+        text-align: center;
+        background: linear-gradient(135deg, #1d1d1d, #3a3a3a);
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        justify-content: center;
+        align-items: center;
+    }
+    h1 {
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+        text-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+    }
+    .letter {
+        font-size: 120px;
+        margin: 20px;
+        padding: 15px 30px;
+        border-radius: 12px;
+        background-color: rgba(255, 255, 255, 0.1);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+    .score {
+        font-size: 1.5rem;
+        margin-bottom: 30px;
+    }
+    .buttons {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 15px;
+    }
+    button {
+        font-size: 1rem;
+        padding: 12px 25px;
+        cursor: pointer;
+        border: none;
+        border-radius: 8px;
+        transition: background-color 0.3s, transform 0.2s;
+    }
+    button:hover {
+        transform: scale(1.05);
+    }
+    .correct {
+        background-color: #28a745;
+        color: white;
+    }
+    .wrong {
+        background-color: #dc3545;
+        color: white;
+    }
+    .restart {
+        background-color: #007bff;
+        color: white;
+    }
+    .hidden {
+        display: none;
+    }
+    .result {
+        font-size: 1.5rem; /* уменьшенный шрифт */
+        margin: 20px;
+        padding: 15px 30px;
+        border-radius: 12px;
+        background-color: rgba(255, 255, 255, 0.1);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+    </style>
+</head>
+<body>
+    <h1>Алфавитная Игра</h1>
+    <div class="letter" id="letter">?</div>
+    <div class="score" id="score">✅ 0 | ❌ 0</div>
+    <!-- Добавляем новую кнопку "Произнести" в блок с кнопками -->
 <div class="buttons">
     <button class="correct" id="correctBtn" onclick="handleAnswer(true)">✅ Правильно</button>
     <button class="wrong" id="wrongBtn" onclick="handleAnswer(false)">❌ Неправильно</button>
@@ -178,3 +262,5 @@
     initNewGame();
     nextLetter();
 </script>
+</body>
+</html>
