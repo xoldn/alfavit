@@ -89,7 +89,12 @@
         <button class="restart hidden" id="newGameBtn" onclick="startNewGame()">🔄 Начать заново</button>
     </div>
     <script>
-        const letters = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ".split("");
+        // Исходный массив букв
+        const originalLetters = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ".split("");
+    
+        // Переменная для случайного порядка игры
+        let gameLetters = [];
+    
         let index = 0;
         let correctCount = 0;
         let wrongCount = 0;
@@ -103,6 +108,16 @@
         const newGameBtn = document.getElementById("newGameBtn");
         let newWrongLetters = []; // для отслеживания ошибок при повторе
     
+        // Функция перемешивания массива
+        function shuffleArray(array) {
+            return array.slice().sort(() => Math.random() - 0.5);
+        }
+    
+        // Инициализация новой игры со случайным порядком букв
+        function initNewGame() {
+            gameLetters = shuffleArray(originalLetters);
+        }
+    
         function nextLetter() {
             if (isRestarting) {
                 if (index < wrongLetters.length) {
@@ -111,8 +126,8 @@
                     endGame();
                 }
             } else {
-                if (index < letters.length) {
-                    letterDiv.textContent = letters[index];
+                if (index < gameLetters.length) {
+                    letterDiv.textContent = gameLetters[index];
                 } else {
                     endGame();
                 }
@@ -132,7 +147,7 @@
                     correctCount++;
                 } else {
                     wrongCount++;
-                    wrongLetters.push(letters[index]);
+                    wrongLetters.push(gameLetters[index]);
                 }
             }
             index++;
@@ -176,6 +191,8 @@
     
         function restartWithWrongLetters() {
             if (wrongLetters.length > 0) {
+                // Перемешиваем ошибки перед повтором
+                wrongLetters = shuffleArray(wrongLetters);
                 index = 0;
                 correctCount = 0;
                 wrongCount = 0;
@@ -200,6 +217,7 @@
             wrongCount = 0;
             wrongLetters = [];
             isRestarting = false;
+            initNewGame(); // получаем случайный порядок букв
             letterDiv.classList.replace("result", "letter");
             scoreDiv.classList.remove("hidden");
             correctBtn.classList.remove("hidden");
@@ -211,6 +229,7 @@
         }
     
         // Запуск игры
+        initNewGame();
         nextLetter();
     </script>
 </body>
