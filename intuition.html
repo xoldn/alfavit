@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Игра "Интуиция"</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #333;
+      color: #fff;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    #card {
+      width: 200px;
+      height: 300px;
+      background-color: #777;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      margin-bottom: 30px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+    }
+    .buttons {
+      margin-bottom: 30px;
+    }
+    button {
+      font-size: 1rem;
+      padding: 10px 20px;
+      margin: 0 10px;
+      cursor: pointer;
+      border: none;
+      border-radius: 5px;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      opacity: 0.8;
+    }
+    #whiteBtn {
+      background-color: #fff;
+      color: #333;
+    }
+    #blackBtn {
+      background-color: #000;
+      color: #fff;
+    }
+    #restartBtn {
+      background-color: #007bff;
+      color: #fff;
+      margin-top: 20px;
+    }
+    .scoreboard {
+      font-size: 1.2rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Игра "Интуиция"</h1>
+  <div id="card">?</div>
+  <div class="buttons">
+    <button id="whiteBtn" onclick="makeGuess('white')">Белое</button>
+    <button id="blackBtn" onclick="makeGuess('black')">Черное</button>
+  </div>
+  <div class="scoreboard">
+    <span id="correctScore">✅ 0</span> | <span id="wrongScore">❌ 0</span>
+  </div>
+  <button id="restartBtn" class="hidden" onclick="restartGame()">Начать заново</button>
+
+  <script>
+    let correctCount = 0;
+    let wrongCount = 0;
+    const card = document.getElementById("card");
+    const correctScoreEl = document.getElementById("correctScore");
+    const wrongScoreEl = document.getElementById("wrongScore");
+    const restartBtn = document.getElementById("restartBtn");
+    const whiteBtn = document.getElementById("whiteBtn");
+    const blackBtn = document.getElementById("blackBtn");
+
+    // Случайный выбор цвета карточки
+    function generateColor() {
+      return Math.random() < 0.5 ? "white" : "black";
+    }
+
+    // Обновление счета на экране
+    function updateScore() {
+      correctScoreEl.textContent = `✅ ${correctCount}`;
+      wrongScoreEl.textContent = `❌ ${wrongCount}`;
+    }
+
+    // Функция обработки выбора игрока
+    function makeGuess(guess) {
+      // Генерация результата карточки
+      const result = generateColor();
+      // Применяем цвет и отображаем текст для отладки
+      card.style.backgroundColor = result;
+      card.textContent = "";
+      // Проверка совпадения
+      if (guess === result) {
+        correctCount++;
+      } else {
+        wrongCount++;
+      }
+      updateScore();
+      // Если нужно завершать игру, можно добавить условие
+      // Здесь игра продолжается бесконечно
+      // Если хотите ограничить число ходов, добавьте логику
+    }
+
+    function restartGame() {
+        correctCount = 0;
+        wrongCount = 0;
+        updateScore();
+        card.style.backgroundColor = "#777";
+        card.textContent = "?";
+        restartBtn.classList.add("hidden");
+        whiteBtn.disabled = false;
+        blackBtn.disabled = false;
+    }
+
+    // Если хотите показывать кнопку перезапуска после нескольких ходов, можно добавить следующее:
+    // Пример: если общее число ходов достигло 10, показать restartBtn
+    // А пока скрывать её:
+    function checkGameOver() {
+      const total = correctCount + wrongCount;
+      if (total >= 10) {
+        restartBtn.classList.remove("hidden");
+        whiteBtn.disabled = true;
+        blackBtn.disabled = true;
+      }
+    }
+
+    // Обновляем счет после каждого угаданного цвета
+    // Переопределяем makeGuess чтобы вызвать checkGameOver()
+    // Обновляем счет и продолжительность игры без ограничения количества карточек
+    function makeGuess(guess) {
+        const result = generateColor();
+        // Применяем цвет карточки для результата
+        card.style.backgroundColor = result;
+        card.textContent = "";
+        if (guess === result) {
+            correctCount++;
+            // Подсветка для правильного ответа
+            card.style.boxShadow = "inset 0 0 0 5px limegreen";
+        } else {
+            wrongCount++;
+            // Подсветка для неправильного ответа
+            card.style.boxShadow = "inset 0 0 0 5px red";
+        }
+        updateScore();
+        // Снимаем подсветку через 500 мс
+        setTimeout(() => {
+            card.style.boxShadow = "none";
+        }, 500);
+        }
+  </script>
+</body>
+</html>
