@@ -148,7 +148,7 @@
     <button class="restart hidden" id="newGameBtn" onclick="startNewGame()">🔄 Начать заново</button>
   </div>
   <script>
-    // Исходный массив букв и список гласных
+    // Исходный массив букв
     const originalLetters = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ".split("");
     const vowels = ["А", "Е", "Ё", "И", "О", "У", "Ы", "Э", "Ю", "Я"];
 
@@ -169,9 +169,12 @@
     const newGameBtn = document.getElementById("newGameBtn");
     const modeLabel = document.getElementById("modeLabel");
     const modeToggle = document.getElementById("modeToggle");
-
-    // Обработчик переключения режима ввода
+    let newWrongLetters = [];
+    
+    // Устанавливаем обработчик изменения режима ввода
     modeToggle.addEventListener("change", updateInputMode);
+
+    // Функция для переключения режима ввода
     function updateInputMode() {
       if (modeToggle.checked) {
         modeLabel.textContent = "Голос";
@@ -191,7 +194,7 @@
       return array.slice().sort(() => Math.random() - 0.5);
     }
     
-    // Инициализация новой игры
+    // Инициализация новой игры со случайным порядком букв
     function initNewGame() {
       gameLetters = shuffleArray(originalLetters);
       console.log("gameLetters (после перемешивания):", gameLetters);
@@ -221,23 +224,25 @@
     }
     
     function handleAnswer(isCorrect) {
-      if (isRestarting) {
+        if (isRestarting) {
         if (isCorrect) {
-          correctCount++;
+            correctCount++;
         } else {
-          wrongCount++;
+            wrongCount++;
+            // Только если ответ неверный – запоминаем букву для повторения
+            newWrongLetters.push(currentLetter);
         }
-      } else {
+        } else {
         if (isCorrect) {
-          correctCount++;
+            correctCount++;
         } else {
-          wrongCount++;
-          wrongLetters.push(gameLetters[index]);
+            wrongCount++;
+            wrongLetters.push(gameLetters[index]);
         }
-      }
-      index++;
-      updateScore();
-      nextLetter();
+        }
+        index++;
+        updateScore();
+        nextLetter();
     }
     
     function updateScore() {
@@ -245,23 +250,35 @@
     }
     
     function endGame() {
-      scoreDiv.classList.add("hidden");
-      letterDiv.classList.replace("letter", "result");
-      let wrongDisplay = "";
-      if (!isRestarting && wrongLetters.length > 0) {
-        wrongDisplay = `<br> Неправильные буквы: ${wrongLetters.join(", ")}`;
-      }
-      letterDiv.innerHTML = `🎉 Игра окончена! <br> ✅ ${correctCount} | ❌ ${wrongCount} ${wrongDisplay}`;
-      correctBtn.classList.add("hidden");
-      wrongBtn.classList.add("hidden");
-      if (wrongLetters.length === 0) {
+        scoreDiv.classList.add("hidden");
+        letterDiv.classList.replace("letter", "result");
+        let wrongDisplay = "";
+
+        if (isRestarting) {
+        if (newWrongLetters.length > 0) {
+            wrongDisplay = `<br> Неправильные буквы: ${newWrongLetters.join(", ")}`;
+        }
+        // Оставляем для повторения только те буквы, которые снова были ошибочными
+        wrongLetters = newWrongLetters.slice();
+        newWrongLetters = [];
+        } else {
+        if (wrongLetters.length > 0) {
+            wrongDisplay = `<br> Неправильные буквы: ${wrongLetters.join(", ")}`;
+        }
+        }
+
+        letterDiv.innerHTML = `🎉 Игра окончена! <br> ✅ ${correctCount} | ❌ ${wrongCount} ${wrongDisplay}`;
+        correctBtn.classList.add("hidden");
+        wrongBtn.classList.add("hidden");
+        if (wrongLetters.length === 0) {
         restartBtn.classList.add("hidden");
-      } else {
+        } else {
         restartBtn.classList.remove("hidden");
-      }
-      newGameBtn.classList.remove("hidden");
-      Telegram.WebApp.sendData(JSON.stringify({ correct: correctCount, wrong: wrongCount }));
-      Telegram.WebApp.close();
+        }
+        newGameBtn.classList.remove("hidden");
+        document.querySelector(".mode-container").classList.add("hidden");
+        Telegram.WebApp.sendData(JSON.stringify({ correct: correctCount, wrong: wrongCount }));
+        Telegram.WebApp.close();
     }
     
     function restartWithWrongLetters() {
@@ -279,6 +296,8 @@
         newGameBtn.classList.add("hidden");
         updateScore();
         nextLetter();
+        // Возвращаем переключатель режима при старте новой игры
+        document.querySelector(".mode-container").classList.remove("hidden");
       } else {
         alert("Нет неправильных букв для повторения!");
       }
@@ -299,40 +318,29 @@
       newGameBtn.classList.add("hidden");
       updateScore();
       nextLetter();
+      // Возвращаем переключатель режима при старте новой игры
+        document.querySelector(".mode-container").classList.remove("hidden");
     }
     
-    // Функция для запуска распознавания речи с использованием грамматики
+    // Функция для запуска распознавания речи
     function startRecognition() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      const SpeechGrammarList = window.SpeechGrammarList || window.webkitSpeechGrammarList;
       if (!SpeechRecognition) {
         alert("Ваш браузер не поддерживает распознавание речи.");
         return;
       }
-      
       const recognition = new SpeechRecognition();
       recognition.lang = 'ru-RU';
       recognition.interimResults = false;
-      // Увеличиваем число альтернатив, чтобы получить несколько вариантов
-      recognition.maxAlternatives = 5;
+      recognition.maxAlternatives = 1;
       
-      // Если браузер поддерживает грамматики, задаём грамматику для отдельных букв
-      if (SpeechGrammarList) {
-        const grammar = '#JSGF V1.0; grammar letters; public <letter> = ' + originalLetters.join(' | ') + ' ;';
-        const speechRecognitionList = new SpeechGrammarList();
-        speechRecognitionList.addFromString(grammar, 1);
-        recognition.grammars = speechRecognitionList;
-      }
+      recognition.start();
       
       recognition.addEventListener("result", (event) => {
-        // Берём первый результат
-        let transcript = event.results[0][0].transcript.trim().toUpperCase();
+        const transcript = event.results[0][0].transcript.trim().toUpperCase();
         console.log("Распознанное слово:", transcript);
         console.log("Ожидалась буква:", currentLetter);
-        
-        // Если распознано слово длиннее одного символа (например, "тэ"), 
-        // можно попробовать взять первый символ или проверить, содержит ли слово нужную букву.
-        if (transcript === currentLetter || transcript.includes(currentLetter)) {
+        if (transcript === currentLetter) {
           alert("Правильно!");
           handleAnswer(true);
         } else {
@@ -346,10 +354,8 @@
       });
       
       recognition.addEventListener("end", () => {
-        // Можно добавить дополнительные действия по завершении распознавания.
+        // Дополнительная обработка по завершении распознавания, если необходимо.
       });
-      
-      recognition.start();
     }
     
     // Запуск игры
