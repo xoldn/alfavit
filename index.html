@@ -148,7 +148,7 @@
     <button class="restart hidden" id="newGameBtn" onclick="startNewGame()">🔄 Начать заново</button>
   </div>
   <script>
-    // Исходный массив букв
+    // Исходный массив букв и список гласных
     const originalLetters = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ".split("");
     const vowels = ["А", "Е", "Ё", "И", "О", "У", "Ы", "Э", "Ю", "Я"];
 
@@ -170,10 +170,8 @@
     const modeLabel = document.getElementById("modeLabel");
     const modeToggle = document.getElementById("modeToggle");
 
-    // Устанавливаем обработчик изменения режима ввода
+    // Обработчик переключения режима ввода
     modeToggle.addEventListener("change", updateInputMode);
-
-    // Функция для переключения режима ввода
     function updateInputMode() {
       if (modeToggle.checked) {
         modeLabel.textContent = "Голос";
@@ -193,7 +191,7 @@
       return array.slice().sort(() => Math.random() - 0.5);
     }
     
-    // Инициализация новой игры со случайным порядком букв
+    // Инициализация новой игры
     function initNewGame() {
       gameLetters = shuffleArray(originalLetters);
       console.log("gameLetters (после перемешивания):", gameLetters);
@@ -303,9 +301,10 @@
       nextLetter();
     }
     
-    // Функция для запуска распознавания речи
+    // Функция для запуска распознавания речи с использованием грамматики
     function startRecognition() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const SpeechGrammarList = window.SpeechGrammarList || window.webkitSpeechGrammarList;
       if (!SpeechRecognition) {
         alert("Ваш браузер не поддерживает распознавание речи.");
         return;
@@ -314,13 +313,26 @@
       const recognition = new SpeechRecognition();
       recognition.lang = 'ru-RU';
       recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
+      // Увеличиваем число альтернатив, чтобы получить несколько вариантов
+      recognition.maxAlternatives = 5;
+      
+      // Если браузер поддерживает грамматики, задаём грамматику для отдельных букв
+      if (SpeechGrammarList) {
+        const grammar = '#JSGF V1.0; grammar letters; public <letter> = ' + originalLetters.join(' | ') + ' ;';
+        const speechRecognitionList = new SpeechGrammarList();
+        speechRecognitionList.addFromString(grammar, 1);
+        recognition.grammars = speechRecognitionList;
+      }
       
       recognition.addEventListener("result", (event) => {
-        const transcript = event.results[0][0].transcript.trim().toUpperCase();
+        // Берём первый результат
+        let transcript = event.results[0][0].transcript.trim().toUpperCase();
         console.log("Распознанное слово:", transcript);
         console.log("Ожидалась буква:", currentLetter);
-        if (transcript === currentLetter) {
+        
+        // Если распознано слово длиннее одного символа (например, "тэ"), 
+        // можно попробовать взять первый символ или проверить, содержит ли слово нужную букву.
+        if (transcript === currentLetter || transcript.includes(currentLetter)) {
           alert("Правильно!");
           handleAnswer(true);
         } else {
@@ -334,10 +346,9 @@
       });
       
       recognition.addEventListener("end", () => {
-        // Здесь можно добавить дополнительные действия по завершении распознавания, если необходимо.
+        // Можно добавить дополнительные действия по завершении распознавания.
       });
       
-      // Запускаем распознавание после установки обработчиков
       recognition.start();
     }
     
