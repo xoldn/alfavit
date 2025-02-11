@@ -325,22 +325,42 @@
     // Функция для запуска распознавания речи
     function startRecognition() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const SpeechGrammarList = window.SpeechGrammarList || window.webkitSpeechGrammarList;
       if (!SpeechRecognition) {
         alert("Ваш браузер не поддерживает распознавание речи.");
         return;
       }
+      
       const recognition = new SpeechRecognition();
       recognition.lang = 'ru-RU';
       recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
+      recognition.maxAlternatives = 5; // получаем несколько вариантов
+      
+      // Задаём грамматику, если поддерживается
+      if (SpeechGrammarList) {
+        // originalLetters – массив с буквами, например:
+        // const originalLetters = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ".split("");
+        const grammar = '#JSGF V1.0; grammar letters; public <letter> = ' + originalLetters.join(' | ') + ' ;';
+        const speechRecognitionList = new SpeechGrammarList();
+        speechRecognitionList.addFromString(grammar, 1);
+        recognition.grammars = speechRecognitionList;
+      }
       
       recognition.start();
       
       recognition.addEventListener("result", (event) => {
-        const transcript = event.results[0][0].transcript.trim().toUpperCase();
+        let transcript = event.results[0][0].transcript.trim().toUpperCase();
+        
+        // Если пользователь произносит «БУКВА Т», удаляем лишнее слово
+        if (transcript.indexOf("БУКВА ") === 0) {
+          transcript = transcript.replace("БУКВА ", "");
+        }
+        
         console.log("Распознанное слово:", transcript);
         console.log("Ожидалась буква:", currentLetter);
-        if (transcript === currentLetter) {
+        
+        // Проверяем альтернативы – если нужная буква встречается, считаем, что ответ правильный
+        if (transcript === currentLetter || transcript.includes(currentLetter)) {
           alert("Правильно!");
           handleAnswer(true);
         } else {
@@ -350,13 +370,20 @@
       });
       
       recognition.addEventListener("error", (event) => {
-        alert("Ошибка распознавания: " + event.error);
+        if (event.error === "no-speech") {
+          alert("Не распознано. Попробуйте ещё раз.");
+          // Опционально можно автоматически перезапустить распознавание:
+          // recognition.start();
+        } else {
+          alert("Ошибка распознавания: " + event.error);
+        }
       });
       
       recognition.addEventListener("end", () => {
-        // Дополнительная обработка по завершении распознавания, если необходимо.
+        // Дополнительная обработка по завершении, если необходимо
       });
     }
+
     
     // Запуск игры
     initNewGame();
