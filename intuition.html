@@ -145,24 +145,26 @@
     // Обновляем счет и продолжительность игры без ограничения количества карточек
     function makeGuess(guess) {
         const result = generateColor();
-        // Применяем цвет карточки для результата
+        // Показываем результат карточки
         card.style.backgroundColor = result;
         card.textContent = "";
         if (guess === result) {
-            correctCount++;
-            // Подсветка для правильного ответа
-            card.style.boxShadow = "inset 0 0 0 5px limegreen";
+        correctCount++;
+        // Подсветка для правильного ответа
+        card.style.boxShadow = "inset 0 0 0 5px limegreen";
         } else {
-            wrongCount++;
-            // Подсветка для неправильного ответа
-            card.style.boxShadow = "inset 0 0 0 5px red";
+        wrongCount++;
+        // Подсветка для неправильного ответа
+        card.style.boxShadow = "inset 0 0 0 5px red";
         }
         updateScore();
-        // Снимаем подсветку через 500 мс
+        // Через 1 секунду возвращаем карточку к исходному виду
         setTimeout(() => {
-            card.style.boxShadow = "none";
-        }, 500);
-        }
+        card.style.backgroundColor = "#777";
+        card.textContent = "?";
+        card.style.boxShadow = "none";
+        }, 1000);
+    }
   </script>
 </body>
 </html>
