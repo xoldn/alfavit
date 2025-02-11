@@ -361,7 +361,6 @@
         
         // Проверяем альтернативы – если нужная буква встречается, считаем, что ответ правильный
         if (transcript === currentLetter || transcript.includes(currentLetter)) {
-          alert("Правильно!");
           handleAnswer(true);
         } else {
           alert("Неправильно! Вы сказали: " + transcript);
