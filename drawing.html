@@ -111,9 +111,10 @@
       border-radius: 50%;
     }
     .shape-text {
-      white-space: nowrap;
       min-width: 30px;
       min-height: 20px;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
     .resize-handle {
       width: 10px;
@@ -227,7 +228,6 @@
       // State
       let selectedShapeType = "rectangle";
       let shapes = []; // Array of shape objects { id, element, type, locked, hidden, parentId }
-      let history = [];
       let redoStack = [];
       let isDrawing = false;
       let startX = 0;
@@ -240,6 +240,9 @@
 
       // For multi-selection
       let selectedShapes = new Set();
+
+      // History management (for more robust undo/redo)
+      let history = [];
 
       // Generate ID
       function generateId() {
@@ -289,13 +292,6 @@
         }});
       }
 
-      // Rebuild shape objects in array -> for layering
-      function addShape(shapeObj) {
-        shapes.push(shapeObj);
-        redoStack = [];
-        renderLayers();
-      }
-
       // Tools & UI Listeners
       shapeIcons.forEach(icon => {
         icon.addEventListener("click", () => {
@@ -305,17 +301,371 @@
 
       colorPicker.addEventListener("input", e => {
         selectedColor = e.target.value;
+        // Update color of selected shapes
+        selectedShapes.forEach(sId => {
+          const sObj = shapes.find(obj => obj.id === sId);
+          if (sObj) {
+            sObj.element.style.backgroundColor = selectedColor;
+          }
+        });
       });
 
       opacityRange.addEventListener("input", e => {
         selectedOpacity = parseFloat(e.target.value);
+        // Update opacity of selected shapes
+        selectedShapes.forEach(sId => {
+          const sObj = shapes.find(obj => obj.id === sId);
+          if (sObj) {
+            sObj.element.style.opacity = selectedOpacity;
+          }
+        });
       });
 
       borderWidthInput.addEventListener("input", e => {
         selectedBorderWidth = parseInt(e.target.value);
+        // Update border width of selected shapes
+        selectedShapes.forEach(sId => {
+          const sObj = shapes.find(obj => obj.id === sId);
+          if (sObj) {
+            sObj.element.style.borderWidth = selectedBorderWidth + "px";
+          }
+        });
+      });
+
+      // Snap to grid helper
+      function snap(value, gridSize) {
+        return Math.round(value / gridSize) * gridSize;
+      }
+
+      // Create new shape object
+      function createNewShape() {
+        const id = generateId();
+        const el = document.createElement("div");
+        el.classList.add("shape");
+        if (selectedShapeType === "circle") {
+          el.classList.add("circle");
+        }
+        el.style.backgroundColor = selectedColor;
+        el.style.opacity = selectedOpacity;
+        el.style.borderWidth = selectedBorderWidth + "px";
+        el.style.borderStyle = "solid";
+        el.style.borderColor = "black";
+        el.style.zIndex = shapes.length + 1;
+        el.dataset.id = id;
+        el.dataset.isGroup = "false";
+        el.style.left = startX + "px";
+        el.style.top = startY + "px";
+        el.style.width = "0px";
+        el.style.height = "0px";
+        addShapeEventListeners(el);
+        const shapeObj = {
+          id,
+          element: el,
+          type: selectedShapeType,
+          locked: false,
+          hidden: false
+        };
+        shapes.push(shapeObj);
+        redoStack = [];
+        return shapeObj;
+      }
+
+      function createTextShape(e) {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const id = generateId();
+        const el = document.createElement("div");
+        el.classList.add("shape", "shape-text");
+        el.style.left = x + "px";
+        el.style.top = y + "px";
+        el.style.backgroundColor = selectedColor;
+        el.style.opacity = selectedOpacity;
+        el.style.borderWidth = selectedBorderWidth + "px";
+        el.style.borderStyle = "solid";
+        el.style.borderColor = "black";
+        el.style.zIndex = shapes.length + 1;
+        el.style.minWidth = "50px";
+        el.style.minHeight = "20px";
+        el.dataset.id = id;
+        el.dataset.isGroup = "false";
+        el.contentEditable = "true";
+        el.innerText = "Your Text";
+        addShapeEventListeners(el);
+        canvas.appendChild(el);
+        const shapeObj = {
+          id,
+          element: el,
+          type: "text",
+          locked: false,
+          hidden: false,
+        };
+        shapes.push(shapeObj);
+        redoStack = [];
+        selectedShapes.clear();
+        selectedShapes.add(id);
+        updateSelectionUI();
+        addResizeHandle(el);
+        addRotateHandle(el);
+        renderLayers();
+      }
+
+      // Add shape event listeners
+      function addShapeEventListeners(el) {
+        el.addEventListener("mousedown", shapeMouseDown);
+      }
+
+      // Clicking on shape to drag
+      function shapeMouseDown(e) {
+        if (isDrawing) return;
+        const shapeEl = e.currentTarget;
+        const shapeId = shapeEl.dataset.id;
+        e.stopPropagation();
+        if (!e.shiftKey && !selectedShapes.has(shapeId)) {
+          selectedShapes.clear();
+        }
+        if (selectedShapes.has(shapeId)) {
+          // do nothing
+        } else {
+          selectedShapes.add(shapeId);
+        }
+        updateSelectionUI();
+        renderLayers();
+
+        let offsetX = e.offsetX;
+        let offsetY = e.offsetY;
+
+        function mouseMove(ev) {
+          const cRect = canvas.getBoundingClientRect();
+          let left = (ev.clientX - cRect.left - offsetX);
+          let top = (ev.clientY - cRect.top - offsetY);
+          if (snapToGridCheckbox.checked) {
+            left = snap(left, 20);
+            top = snap(top, 20);
+          }
+          // move all selected shapes together
+          selectedShapes.forEach(sId => {
+            const sObj = shapes.find(obj => obj.id === sId);
+            if (sObj && !sObj.element.dataset.isGroup && !sObj.locked) {
+              const dx = parseInt(sObj.element.style.left) - parseInt(shapeEl.style.left);
+              const dy = parseInt(sObj.element.style.top) - parseInt(shapeEl.style.top);
+              sObj.element.style.left = (left + dx) + "px";
+              sObj.element.style.top = (top + dy) + "px";
+            }
+          });
+          shapeEl.style.left = left + "px";
+          shapeEl.style.top = top + "px";
+        }
+
+        function mouseUp() {
+          document.removeEventListener("mousemove", mouseMove);
+          document.removeEventListener("mouseup", mouseUp);
+        }
+
+        document.addEventListener("mousemove", mouseMove);
+        document.addEventListener("mouseup", mouseUp);
+      }
+
+      // Resize handle
+      function addResizeHandle(shapeEl) {
+        if (shapeEl.querySelector(".resize-handle")) return;
+        const resize = document.createElement("div");
+        resize.classList.add("resize-handle");
+        shapeEl.appendChild(resize);
+
+        resize.addEventListener("mousedown", e => {
+          e.stopPropagation();
+          let initialX = e.clientX;
+          let initialY = e.clientY;
+          let initialW = parseInt(shapeEl.style.width);
+          let initialH = parseInt(shapeEl.style.height);
+          let shapeLeft = parseInt(shapeEl.style.left);
+          let shapeTop = parseInt(shapeEl.style.top);
+
+          function onMouseMove(ev) {
+            const deltaX = ev.clientX - initialX;
+            const deltaY = ev.clientY - initialY;
+            let newWidth = initialW + deltaX;
+            let newHeight = initialH + deltaY;
+
+            // If drawing in negative direction, handle flipping
+            if (newWidth < 0) {
+              shapeEl.style.left = (shapeLeft + newWidth) + "px";
+              newWidth = Math.abs(newWidth);
+            }
+            if (newHeight < 0) {
+              shapeEl.style.top = (shapeTop + newHeight) + "px";
+              newHeight = Math.abs(newHeight);
+            }
+
+            if (ev.shiftKey) {
+              const aspect = initialW / initialH || 1;
+              if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                newHeight = newWidth / aspect;
+              } else {
+                newWidth = newHeight * aspect;
+              }
+            }
+            if (snapToGridCheckbox.checked) {
+              newWidth = snap(newWidth, 20);
+              newHeight = snap(newHeight, 20);
+            }
+
+            shapeEl.style.width = newWidth + "px";
+            shapeEl.style.height = newHeight + "px";
+          }
+
+          function onMouseUp() {
+            document.removeEventListener("mousemove", onMouseMove);
+            document.removeEventListener("mouseup", onMouseUp);
+          }
+
+          document.addEventListener("mousemove", onMouseMove);
+          document.addEventListener("mouseup", onMouseUp);
+        });
+      }
+
+      // Rotation handle
+      function addRotateHandle(shapeEl) {
+        if (shapeEl.querySelector(".rotate-handle")) return;
+        const rotate = document.createElement("div");
+        rotate.classList.add("rotate-handle");
+        shapeEl.appendChild(rotate);
+
+        let currentAngle = 0;
+
+        rotate.addEventListener("mousedown", e => {
+          e.stopPropagation();
+          const rect = canvas.getBoundingClientRect();
+          const centerX = shapeEl.offsetLeft + shapeEl.offsetWidth / 2;
+          const centerY = shapeEl.offsetTop + shapeEl.offsetHeight / 2;
+
+          function onMouseMove(ev) {
+            const mouseX = ev.clientX - rect.left;
+            const mouseY = ev.clientY - rect.top;
+
+            const dx = mouseX - centerX;
+            const dy = mouseY - centerY;
+            let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+            currentAngle = angle;
+            shapeEl.style.transform = `translate(0,0) rotate(${angle}deg)`;
+          }
+
+          function onMouseUp() {
+            document.removeEventListener("mousemove", onMouseMove);
+            document.removeEventListener("mouseup", onMouseUp);
+          }
+
+          document.addEventListener("mousemove", onMouseMove);
+          document.addEventListener("mouseup", onMouseUp);
+        });
+      }
+
+      // Ungroup + group
+      function addShape(shapeObj) {
+        redoStack = [];
+        renderLayers();
+      }
+
+      groupBtn.addEventListener("click", () => {
+        if (selectedShapes.size < 2) return;
+        // We'll create a container shape
+        const groupId = generateId();
+        const groupEl = document.createElement("div");
+        groupEl.classList.add("shape");
+        groupEl.style.position = "absolute";
+        groupEl.style.left = "0px";
+        groupEl.style.top = "0px";
+        groupEl.style.width = "0px";
+        groupEl.style.height = "0px";
+        groupEl.style.border = "2px dashed #444";
+        groupEl.style.zIndex = shapes.length + 1;
+        groupEl.dataset.id = groupId;
+        groupEl.dataset.isGroup = "true";
+        canvas.appendChild(groupEl);
+
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+        const groupedShapes = [];
+        shapes.forEach(s => {
+          if (selectedShapes.has(s.id)) {
+            const el = s.element;
+            const x = parseInt(el.style.left);
+            const y = parseInt(el.style.top);
+            const w = parseInt(el.style.width) || el.offsetWidth;
+            const h = parseInt(el.style.height) || el.offsetHeight;
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+            if (x + w > maxX) maxX = x + w;
+            if (y + h > maxY) maxY = y + h;
+            groupedShapes.push(s);
+          }
+        });
+        const groupWidth = maxX - minX;
+        const groupHeight = maxY - minY;
+        groupEl.style.left = `${minX}px`;
+        groupEl.style.top = `${minY}px`;
+        groupEl.style.width = `${groupWidth}px`;
+        groupEl.style.height = `${groupHeight}px`;
+        groupedShapes.forEach(s => {
+          const el = s.element;
+          const shapeLeft = parseInt(el.style.left) - minX;
+          const shapeTop = parseInt(el.style.top) - minY;
+          el.style.left = shapeLeft + "px";
+          el.style.top = shapeTop + "px";
+          groupEl.appendChild(el);
+        });
+        shapes = shapes.filter(s => !selectedShapes.has(s.id));
+        const groupObj = {
+          id: groupId,
+          element: groupEl,
+          type: "group",
+        };
+        shapes.push(groupObj);
+        selectedShapes.clear();
+        selectedShapes.add(groupId);
+        updateSelectionUI();
+        renderLayers();
+      });
+
+      ungroupBtn.addEventListener("click", () => {
+        if (selectedShapes.size !== 1) return;
+        const id = [...selectedShapes][0];
+        const shapeObj = shapes.find(s => s.id === id);
+        if (!shapeObj || shapeObj.type !== "group") return;
+        const groupEl = shapeObj.element;
+        while (groupEl.firstChild) {
+          const child = groupEl.firstChild;
+          if (child.classList && child.classList.contains("shape")) {
+            const offsetLeft = parseInt(groupEl.style.left);
+            const offsetTop = parseInt(groupEl.style.top);
+            child.style.left = (offsetLeft + parseInt(child.style.left)) + "px";
+            child.style.top = (offsetTop + parseInt(child.style.top)) + "px";
+            canvas.appendChild(child);
+            const childId = child.dataset.id;
+            shapes.push({
+              id: childId,
+              element: child,
+              type: child.dataset.isGroup === "true" ? "group" : (child.classList.contains("circle") ? "circle" : (child.classList.contains("shape-text") ? "text" : "rectangle"))
+            });
+          } else {
+            groupEl.removeChild(child);
+          }
+        }
+        shapes = shapes.filter(s => s.id !== id);
+        groupEl.remove();
+        selectedShapes.clear();
+        renderLayers();
       });
 
       // Undo / Redo logic
+      function saveHistory() {
+        // For robust undo/redo, we would clone the entire shapes array, or store patches
+        // This is a simplified approach
+      }
+
       undoButton.addEventListener("click", () => {
         if (shapes.length > 0) {
           const last = shapes.pop();
@@ -346,121 +696,9 @@
         a.click();
       });
 
-      // Grouping
-      groupBtn.addEventListener("click", () => {
-        if (selectedShapes.size < 2) return;
-        // We'll create a container shape
-        const groupId = generateId();
-        const groupEl = document.createElement("div");
-        groupEl.classList.add("shape");
-        groupEl.style.position = "absolute";
-        groupEl.style.left = "0px";
-        groupEl.style.top = "0px";
-        groupEl.style.width = "0px";
-        groupEl.style.height = "0px";
-        groupEl.style.border = "2px dashed #444";
-        groupEl.style.zIndex = shapes.length + 1;
-        groupEl.dataset.id = groupId;
-        groupEl.dataset.isGroup = "true";
-        canvas.appendChild(groupEl);
-
-        // Move selected shapes inside
-        let minX = Infinity;
-        let minY = Infinity;
-        let maxX = -Infinity;
-        let maxY = -Infinity;
-        const groupedShapes = [];
-        shapes.forEach(s => {
-          if (selectedShapes.has(s.id)) {
-            // measure bounding box
-            const el = s.element;
-            const x = parseInt(el.style.left);
-            const y = parseInt(el.style.top);
-            const w = parseInt(el.style.width) || el.offsetWidth;
-            const h = parseInt(el.style.height) || el.offsetHeight;
-            if (x < minX) minX = x;
-            if (y < minY) minY = y;
-            if (x + w > maxX) maxX = x + w;
-            if (y + h > maxY) maxY = y + h;
-            groupedShapes.push(s);
-          }
-        });
-        const groupWidth = maxX - minX;
-        const groupHeight = maxY - minY;
-        groupEl.style.left = `${minX}px`;
-        groupEl.style.top = `${minY}px`;
-        groupEl.style.width = `${groupWidth}px`;
-        groupEl.style.height = `${groupHeight}px`;
-        // Move each shape inside groupEl
-        groupedShapes.forEach(s => {
-          const el = s.element;
-          const shapeLeft = parseInt(el.style.left) - minX;
-          const shapeTop = parseInt(el.style.top) - minY;
-          el.style.left = shapeLeft + "px";
-          el.style.top = shapeTop + "px";
-          groupEl.appendChild(el);
-        });
-        // Remove old shapeObj from main shapes list
-        shapes = shapes.filter(s => !selectedShapes.has(s.id));
-        // add new shapeObj for the group
-        const groupObj = {
-          id: groupId,
-          element: groupEl,
-          type: "group",
-        };
-        addShape(groupObj);
-        // clear selection, select new group
-        selectedShapes.clear();
-        selectedShapes.add(groupId);
-        updateSelectionUI();
-      });
-
-      ungroupBtn.addEventListener("click", () => {
-        // Only ungroup if selected shape is a group
-        if (selectedShapes.size !== 1) return;
-        const id = [...selectedShapes][0];
-        const shapeObj = shapes.find(s => s.id === id);
-        if (!shapeObj || shapeObj.type !== "group") return;
-        // move children out
-        const groupEl = shapeObj.element;
-        while (groupEl.firstChild) {
-          const child = groupEl.firstChild;
-          if (child.classList && child.classList.contains("shape")) {
-            // re-position child in canvas
-            const offsetLeft = parseInt(groupEl.style.left);
-            const offsetTop = parseInt(groupEl.style.top);
-            child.style.left = (offsetLeft + parseInt(child.style.left)) + "px";
-            child.style.top = (offsetTop + parseInt(child.style.top)) + "px";
-            canvas.appendChild(child);
-            // re-add to shapes
-            const childId = child.dataset.id;
-            shapes.push({
-              id: childId,
-              element: child,
-              type: child.dataset.isGroup === "true" ? "group" : (child.classList.contains("circle") ? "circle" : "rectangle"),
-            });
-          } else {
-            groupEl.removeChild(child);
-          }
-        }
-        // remove group shape from shapes
-        shapes = shapes.filter(s => s.id !== id);
-        groupEl.remove();
-        selectedShapes.clear();
-        renderLayers();
-      });
-
-      // Snap to grid helper
-      function snap(value, gridSize) {
-        return Math.round(value / gridSize) * gridSize;
-      }
-
-      // Event Listeners for drawing
+      // Drawing logic
       canvas.addEventListener("mousedown", e => {
-        // if click on existing shape? check if we want to move?
-        // We'll assume we want to create new shape if not shape type 'text'
         if (selectedShapeType === "text") {
-          // Create text shape
           createTextShape(e);
           return;
         }
@@ -469,10 +707,7 @@
         startY = e.clientY - rect.top;
         isDrawing = true;
         currentShape = createNewShape();
-        currentShape.element.style.left = startX + "px";
-        currentShape.element.style.top = startY + "px";
         canvas.appendChild(currentShape.element);
-        addShape(currentShape);
         selectedShapes.clear();
         selectedShapes.add(currentShape.id);
         updateSelectionUI();
@@ -497,223 +732,27 @@
       canvas.addEventListener("mouseup", e => {
         if (!isDrawing) return;
         isDrawing = false;
-        if (currentShape && parseInt(currentShape.element.style.width) < 0) {
-          currentShape.element.style.width = 0 + "px";
-        }
-        if (currentShape && parseInt(currentShape.element.style.height) < 0) {
-          currentShape.element.style.height = 0 + "px";
-        }
         if (currentShape) {
+          // handle negative dims
+          const shapeLeft = parseInt(currentShape.element.style.left);
+          const shapeTop = parseInt(currentShape.element.style.top);
+          let shapeW = parseInt(currentShape.element.style.width);
+          let shapeH = parseInt(currentShape.element.style.height);
+          if (shapeW < 0) {
+            currentShape.element.style.left = (shapeLeft + shapeW) + "px";
+            currentShape.element.style.width = Math.abs(shapeW) + "px";
+          }
+          if (shapeH < 0) {
+            currentShape.element.style.top = (shapeTop + shapeH) + "px";
+            currentShape.element.style.height = Math.abs(shapeH) + "px";
+          }
+
           addResizeHandle(currentShape.element);
           addRotateHandle(currentShape.element);
+          currentShape = null;
         }
-        currentShape = null;
         renderLayers();
       });
-
-      // Create new shape object
-      function createNewShape() {
-        const id = generateId();
-        const el = document.createElement("div");
-        el.classList.add("shape");
-        if (selectedShapeType === "circle") {
-          el.classList.add("circle");
-        }
-        el.style.backgroundColor = selectedColor;
-        el.style.opacity = selectedOpacity;
-        el.style.borderWidth = selectedBorderWidth + "px";
-        el.style.borderStyle = "solid";
-        el.style.borderColor = "black";
-        el.style.zIndex = shapes.length + 1;
-        el.dataset.id = id;
-        el.dataset.isGroup = "false";
-        addShapeEventListeners(el);
-        return {
-          id,
-          element: el,
-          type: selectedShapeType,
-          locked: false,
-          hidden: false,
-        };
-      }
-
-      function createTextShape(e) {
-        const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const id = generateId();
-        const el = document.createElement("div");
-        el.classList.add("shape", "shape-text");
-        el.style.left = x + "px";
-        el.style.top = y + "px";
-        el.style.backgroundColor = selectedColor;
-        el.style.opacity = selectedOpacity;
-        el.style.borderWidth = selectedBorderWidth + "px";
-        el.style.borderStyle = "solid";
-        el.style.borderColor = "black";
-        el.style.zIndex = shapes.length + 1;
-        el.style.minWidth = "50px";
-        el.style.minHeight = "20px";
-        el.dataset.id = id;
-        el.dataset.isGroup = "false";
-        el.contentEditable = "true";
-        el.innerText = "Your Text";
-        addShapeEventListeners(el);
-        canvas.appendChild(el);
-        shapes.push({ id, element: el, type: "text" });
-        redoStack = [];
-        selectedShapes.clear();
-        selectedShapes.add(id);
-        updateSelectionUI();
-        addResizeHandle(el);
-        addRotateHandle(el);
-        renderLayers();
-      }
-
-      // Add standard shape events
-      function addShapeEventListeners(el) {
-        el.addEventListener("mousedown", shapeMouseDown);
-      }
-
-      // Shape dragging
-      function shapeMouseDown(e) {
-        // if we are drawing new shape, skip.
-        if (isDrawing) return;
-        // multi-select logic
-        const shapeEl = e.currentTarget;
-        const shapeId = shapeEl.dataset.id;
-        e.stopPropagation();
-        if (!e.shiftKey && !selectedShapes.has(shapeId)) {
-          selectedShapes.clear();
-        }
-        if (selectedShapes.has(shapeId)) {
-          // do nothing?
-        } else {
-          selectedShapes.add(shapeId);
-        }
-        updateSelectionUI();
-        renderLayers();
-
-        let offsetX = e.offsetX;
-        let offsetY = e.offsetY;
-
-        function mouseMove(ev) {
-          const cRect = canvas.getBoundingClientRect();
-          let left = (ev.clientX - cRect.left - offsetX);
-          let top = (ev.clientY - cRect.top - offsetY);
-          if (snapToGridCheckbox.checked) {
-            left = snap(left, 20);
-            top = snap(top, 20);
-          }
-          // move all selected shapes together
-          selectedShapes.forEach(sId => {
-            const sObj = shapes.find(obj => obj.id === sId);
-            if (sObj && !sObj.element.dataset.isGroup) {
-              if (!sObj.locked) {
-                // compute relative offset from shapeEl
-                const dx = parseInt(sObj.element.style.left) - parseInt(shapeEl.style.left);
-                const dy = parseInt(sObj.element.style.top) - parseInt(shapeEl.style.top);
-                sObj.element.style.left = (left + dx) + "px";
-                sObj.element.style.top = (top + dy) + "px";
-              }
-            }
-          });
-          // also move the primary shape
-          shapeEl.style.left = left + "px";
-          shapeEl.style.top = top + "px";
-        }
-
-        function mouseUp() {
-          document.removeEventListener("mousemove", mouseMove);
-          document.removeEventListener("mouseup", mouseUp);
-        }
-
-        document.addEventListener("mousemove", mouseMove);
-        document.addEventListener("mouseup", mouseUp);
-      }
-
-      // Adds a resize handle
-      function addResizeHandle(shapeEl) {
-        if (shapeEl.querySelector(".resize-handle")) return;
-        const resize = document.createElement("div");
-        resize.classList.add("resize-handle");
-        shapeEl.appendChild(resize);
-
-        resize.addEventListener("mousedown", e => {
-          e.stopPropagation();
-          let initialX = e.clientX;
-          let initialY = e.clientY;
-          let initialW = parseInt(shapeEl.style.width);
-          let initialH = parseInt(shapeEl.style.height);
-
-          function onMouseMove(ev) {
-            const deltaX = ev.clientX - initialX;
-            const deltaY = ev.clientY - initialY;
-            let newWidth = initialW + deltaX;
-            let newHeight = initialH + deltaY;
-
-            if (ev.shiftKey) {
-              const aspect = initialW / initialH || 1;
-              if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                newHeight = newWidth / aspect;
-              } else {
-                newWidth = newHeight * aspect;
-              }
-            }
-            if (snapToGridCheckbox.checked) {
-              newWidth = snap(newWidth, 20);
-              newHeight = snap(newHeight, 20);
-            }
-
-            shapeEl.style.width = newWidth + "px";
-            shapeEl.style.height = newHeight + "px";
-          }
-
-          function onMouseUp() {
-            document.removeEventListener("mousemove", onMouseMove);
-            document.removeEventListener("mouseup", onMouseUp);
-          }
-
-          document.addEventListener("mousemove", onMouseMove);
-          document.addEventListener("mouseup", onMouseUp);
-        });
-      }
-
-      // Adds a rotation handle
-      function addRotateHandle(shapeEl) {
-        if (shapeEl.querySelector(".rotate-handle")) return;
-        const rotate = document.createElement("div");
-        rotate.classList.add("rotate-handle");
-        shapeEl.appendChild(rotate);
-
-        let currentAngle = 0;
-
-        rotate.addEventListener("mousedown", e => {
-          e.stopPropagation();
-          const rect = canvas.getBoundingClientRect();
-          const centerX = (shapeEl.offsetLeft + shapeEl.offsetWidth / 2);
-          const centerY = (shapeEl.offsetTop + shapeEl.offsetHeight / 2);
-
-          function onMouseMove(ev) {
-            const mouseX = ev.clientX - rect.left;
-            const mouseY = ev.clientY - rect.top;
-
-            const dx = mouseX - centerX;
-            const dy = mouseY - centerY;
-            let angle = Math.atan2(dy, dx) * (180 / Math.PI);
-            currentAngle = angle;
-            shapeEl.style.transform = `translate(0,0) rotate(${angle}deg)`;
-          }
-
-          function onMouseUp() {
-            document.removeEventListener("mousemove", onMouseMove);
-            document.removeEventListener("mouseup", onMouseUp);
-          }
-
-          document.addEventListener("mousemove", onMouseMove);
-          document.addEventListener("mouseup", onMouseUp);
-        });
-      }
 
     });
   </script>
