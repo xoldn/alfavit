@@ -1,216 +1,219 @@
-<<<<<<< HEAD
-const shapes = [];
-
-function addShape(type, x, y, width, height, color) {
-    shapes.push({ type, x, y, width, height, color });
-    renderShapes();
-}
-
-function updateShapeColor(index, color) {
-    shapes[index].color = color;
-    renderShapes();
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-    const canvas = document.querySelector(".canvas");
-    const colorPicker = document.querySelector("#colorPicker");
-    const shapeSelector = document.querySelector("#shapeSelector");
-    const widthInput = document.querySelector("#shapeWidth");
-    const heightInput = document.querySelector("#shapeHeight");
-    let selectedColor = "#ff0000";
-    let selectedShape = "rectangle";
-
-    colorPicker.addEventListener("input", (event) => {
-        selectedColor = event.target.value;
-    });
-
-    shapeSelector.addEventListener("change", (event) => {
-        selectedShape = event.target.value;
-    });
-
-    canvas.addEventListener("click", (event) => {
-        const rect = canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-        const width = parseInt(widthInput.value) || 50;
-        const height = parseInt(heightInput.value) || 50;
-        addShape(selectedShape, x, y, width, height, selectedColor);
-    });
-
-    function renderShapes() {
-        canvas.innerHTML = "";
-        shapes.forEach((shape, index) => {
-            const div = document.createElement("div");
-            div.classList.add("shape", shape.type);
-            div.style.left = `${shape.x}px`;
-            div.style.top = `${shape.y}px`;
-            div.style.width = `${shape.width}px`;
-            div.style.height = `${shape.height}px`;
-            div.style.backgroundColor = shape.color;
-            div.addEventListener("click", (event) => {
-                event.stopPropagation();
-                updateShapeColor(index, selectedColor);
-            });
-            canvas.appendChild(div);
-        });
-    }
-});
-
-// HTML Structure
-
-document.body.innerHTML = `
-<h1>Drawing App</h1>
-<input type="color" id="colorPicker" value="#ff0000" />
-<select id="shapeSelector">
-    <option value="rectangle">Rectangle</option>
-    <option value="circle">Circle</option>
-</select>
-<input type="number" id="shapeWidth" placeholder="Width" value="50" />
-<input type="number" id="shapeHeight" placeholder="Height" value="50" />
-<div class="canvas"></div>
-<style>
-.canvas {
-    width: 600px;
-    height: 400px;
-    border: 1px solid black;
-    position: relative;
-}
-.shape {
-    position: absolute;
-    cursor: pointer;
-}
-.circle {
-    border-radius: 50%;
-}
-</style>
-`;
-=======
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Drawing App Pro - GIS Version</title>
-
+  <title>Drawing App Pro - Final Edition</title>
   <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-
   <style>
-    /* Общие стили */
+    :root {
+      /* Современная цветовая палитра */
+      --color-bg: #f9fafc;
+      --color-sidebar: #ffffff;
+      --color-panel: #ffffff;
+      --color-border: #d8dee4;
+      --color-text: #24292f;
+      --color-primary: #2563eb;
+      --color-secondary: #10b981;
+      --color-accent: #f97316;
+      --color-danger: #ef4444;
+      --font-family: "Inter", sans-serif;
+      --transition-speed: 0.2s;
+      --sidebar-width: 320px;
+    }
     * {
-      box-sizing: border-box;
       margin: 0;
       padding: 0;
+      box-sizing: border-box;
+    }
+    html, body {
+      height: 100%;
     }
     body {
-      font-family: Arial, sans-serif;
-      background-color: #f2f2f2;
       display: flex;
-      height: 100vh;
+      background: var(--color-bg);
+      font-family: var(--font-family);
+      color: var(--color-text);
     }
-    /* Фиксированная боковая панель, чтобы не сжималась */
+    /* ----------------- Левая панель ----------------- */
     .sidebar {
-      flex: 0 0 320px;
-      background-color: #fff;
-      border-right: 1px solid #ccc;
+      flex: 0 0 var(--sidebar-width);
+      background: var(--color-sidebar);
+      border-right: 1px solid var(--color-border);
+      display: flex;
+      flex-direction: column;
       padding: 16px;
-      overflow-y: auto;
+      gap: 20px;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+    }
+    /* Заголовок инструментов и версия */
+    .sidebar-header {
       display: flex;
       flex-direction: column;
+      gap: 4px;
     }
-    .sidebar h2 {
-      margin-bottom: 10px;
+    .sidebar-header h2 {
       font-size: 1.2rem;
+      color: var(--color-primary);
     }
-    #appVersion {
-      font-size: 0.9rem;
-      margin-bottom: 8px;
-      color: #666;
+    .version {
+      font-size: 0.85rem;
+      color: #999;
     }
-    .form-group {
-      margin-bottom: 10px;
-      display: flex;
-      flex-direction: column;
-    }
-    .form-group label {
-      margin-bottom: 4px;
-      font-weight: bold;
-      font-size: 14px;
-    }
+    /* Панель инструментов (иконки) */
     .toolbar {
       display: flex;
       gap: 8px;
-      margin-bottom: 16px;
       flex-wrap: wrap;
     }
-    /* Изменённая иконка инструмента pointer – классический курсор */
-    .icon.pointer::before {
-      content: "";
-      display: inline-block;
+    .icon {
+      width: 48px;
+      height: 48px;
+      background: #fff;
+      border: 2px solid var(--color-border);
+      border-radius: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      transition: transform var(--transition-speed), background var(--transition-speed), border-color var(--transition-speed);
+      user-select: none;
+    }
+    .icon:hover {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+      transform: scale(1.07);
+    }
+    .icon.active {
+      background: var(--color-accent);
+      border-color: var(--color-accent);
+      transform: scale(1.07);
+    }
+    .icon svg {
       width: 24px;
       height: 24px;
-      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="black" d="M13,2 L3,14 L8,14 L8,22 L16,14 L13,14 L13,2 Z"/></svg>');
-      background-size: contain;
-      background-repeat: no-repeat;
+      fill: var(--color-text);
+      transition: fill var(--transition-speed);
     }
-    
-    .icon.rectangle::before {
-      content: "";
-      display: inline-block; /* Было block, теперь inline-block */
-      width: 60%;
-      height: 40%;
-      background: #ccc;
+    .icon:hover svg, .icon.active svg {
+      fill: #fff;
     }
-    
-    .icon.circle::before {
-      content: "";
-      display: inline-block; /* Было block, теперь inline-block */
-      width: 50%;
-      height: 50%;
-      background: #ccc;
-      border-radius: 50%;
-    }
-    .icon.arrow {
+    /* Секция «Слои» – заголовок и кнопки Undo/Redo */
+    .layers-header {
       font-size: 1.2rem;
+      color: var(--color-primary);
+      margin-bottom: 4px;
     }
-    .icon.arrow::before {
-      content: "➤";
+    .layer-controls {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
     }
-    .icon.text {
-      font-size: 1.2rem;
+    .btn-undo-redo {
+      width: 48px;
+      height: 48px;
+      background: #fff;
+      border: 2px solid var(--color-border);
+      border-radius: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      transition: transform var(--transition-speed), background var(--transition-speed), border-color var(--transition-speed);
     }
-    .icon.text::before {
-      content: "T";
-      font-weight: bold;
+    .btn-undo-redo:hover {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+      transform: scale(1.07);
+    }
+    .btn-undo-redo svg {
+      width: 24px;
+      height: 24px;
+      fill: var(--color-text);
+      transition: fill var(--transition-speed);
+    }
+    .btn-undo-redo:hover svg {
+      fill: #fff;
+    }
+    /* Список слоёв */
+    .layers {
+      flex: 1;
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      padding: 8px;
+      background: #fff;
+      overflow-y: auto;
+    }
+    .layer-item {
+      display: flex;
+      align-items: center;
+      border-radius: 6px;
+      background: #f3f4f6;
+      margin-bottom: 6px;
+      padding: 8px;
+      cursor: move;
+      transition: background var(--transition-speed), transform var(--transition-speed);
+    }
+    .layer-item:hover {
+      background: #e2e3e5;
+      transform: scale(1.02);
+    }
+    .layer-item.selected {
+      background: var(--color-accent);
+      color: #fff;
+    }
+    .delete-layer-button {
+      margin-left: auto;
+      background: var(--color-danger);
+      border: none;
+      border-radius: 6px;
+      padding: 4px 8px;
+      color: #fff;
+      cursor: pointer;
+      transition: background var(--transition-speed);
+    }
+    .delete-layer-button:hover {
+      background: #b91c1c;
+    }
+    #noLayersMsg {
       color: #666;
+      text-align: center;
+      margin: 6px 0;
     }
+    /* ----------------- Холст ----------------- */
     .canvas-container {
       flex: 1;
       display: flex;
       justify-content: center;
       align-items: center;
-      overflow: hidden;
+      padding: 16px;
+      background: var(--color-bg);
+      overflow: auto;
+      position: relative;
     }
     .canvas {
       width: 900px;
       height: 600px;
-      border: 1px solid #999;
-      background-color: #fff;
+      background: #fff;
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
       position: relative;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.08);
     }
+    /* Фигуры */
     .shape {
       position: absolute;
-      border-style: solid;
       display: flex;
-      justify-content: center;
       align-items: center;
+      justify-content: center;
+      border-style: solid;
+      transform-origin: center;
       box-sizing: border-box;
-      transform-origin: center center;
-      padding: 4px;
+      transition: box-shadow var(--transition-speed);
     }
-    .shape.locked {
-      pointer-events: none;
-      opacity: 0.5;
+    .shape:hover {
+      box-shadow: 0 0 4px rgba(0,0,0,0.15);
     }
     .circle {
       border-radius: 50%;
@@ -220,81 +223,87 @@ document.body.innerHTML = `
       min-height: 20px;
       white-space: pre-wrap;
       word-break: break-word;
+      outline: none;
+      cursor: text;
+    }
+    .selected {
+      outline: 2px dashed var(--color-secondary);
+      outline-offset: 2px;
+    }
+    /* Ручки resize/rotate */
+    .resize-handle,
+    .rotate-handle {
+      display: none;
+    }
+    .selected .resize-handle,
+    .selected .rotate-handle {
+      display: block;
+    }
+    .resize-handle, .rotate-handle {
+      background: var(--color-primary);
+      border-radius: 50%;
+      width: 12px;
+      height: 12px;
     }
     .resize-handle {
-      width: 10px;
-      height: 10px;
-      background: #333;
       position: absolute;
-      right: -5px;
-      bottom: -5px;
+      right: -6px;
+      bottom: -6px;
       cursor: nwse-resize;
     }
     .rotate-handle {
-      width: 10px;
-      height: 10px;
-      background: #333;
       position: absolute;
       top: -20px;
       left: 50%;
       transform: translateX(-50%);
       cursor: grab;
-      border-radius: 50%;
     }
-    .selected {
-      outline: 2px dashed #06f;
-    }
-    .layers {
-      flex: 1;
-      overflow-y: auto;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      padding: 8px;
-      margin-bottom: 10px;
-      min-height: 50px;
-    }
-    .layer-item {
-      padding: 6px 8px;
-      margin: 4px 0;
-      background: #eee;
-      border-radius: 4px;
-      cursor: pointer;
+    /* Панель управления (однострочная) */
+    .color-panel {
+      position: absolute;
+      background: var(--color-panel);
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      padding: 4px 8px;
+      z-index: 1000;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      transition: transform 0.2s;
+      gap: 8px;
+      font-size: 0.85rem;
     }
-    .layer-item:hover {
-      transform: scale(1.01);
-      background: #e2e2e2;
+    .color-panel label {
+      margin-right: 4px;
+      white-space: nowrap;
+      color: #555;
     }
-    .layer-item.selected {
-      background: #d0ebff;
-      outline: 1px solid #409eff;
+    .color-panel input[type="color"],
+    .color-panel input[type="range"],
+    .color-panel input[type="number"] {
+      max-width: 70px;
     }
-    #deleteShape {
-      background: #f44336;
-      color: #fff;
+    .color-panel button {
+      background: var(--color-accent);
       border: none;
-      padding: 6px 12px;
-      cursor: pointer;
+      color: #fff;
       border-radius: 4px;
-      margin-bottom: 10px;
-      transition: background 0.2s;
+      padding: 4px 8px;
+      cursor: pointer;
+      transition: background var(--transition-speed);
     }
-    #deleteShape:hover {
-      background: #e03128;
+    .color-panel button:hover {
+      background: var(--color-primary);
     }
-    /* Стили для стрелок */
+    /* Стрелка и её ручки */
     .arrow-container {
       position: absolute;
+      pointer-events: auto;
     }
     .arrow-shaft {
       position: absolute;
       top: 50%;
       left: 0;
-      height: 2px; /* будет перезаписываться через JS */
-      background-color: black;
+      height: 2px;
       transform: translateY(-50%);
     }
     .arrow-head {
@@ -303,75 +312,114 @@ document.body.innerHTML = `
       height: 0;
       border-top: 5px solid transparent;
       border-bottom: 5px solid transparent;
-      border-left: 10px solid black;
       transform: translateY(-50%);
+    }
+    .arrow-handle {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: var(--color-primary);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      cursor: move;
+      display: none;
+    }
+    .arrow-container.selected .arrow-handle {
+      display: block;
     }
   </style>
 </head>
 <body>
+  <!-- Левая панель -->
   <div class="sidebar">
-    <h2>Tools</h2>
-    <div id="appVersion">Version v1.0.5</div>
+    <div class="sidebar-header">
+      <h2>Инструменты</h2>
+      <div class="version">Version Final.1.0</div>
+    </div>
     <div class="toolbar">
-      <div class="icon pointer active" data-shape="pointer" title="Pointer"></div>
-      <div class="icon rectangle" data-shape="rectangle" title="Rectangle"></div>
-      <div class="icon circle" data-shape="circle" title="Circle"></div>
-      <div class="icon arrow" data-shape="arrow" title="Arrow"></div>
-      <div class="icon text" data-shape="text" title="Text"></div>
+      <div class="icon pointer active" data-shape="pointer" title="Указатель">
+        <svg viewBox="0 0 16 16">
+          <path d="M2 2v12l4-4 3 4 2-2-3-4 4-4H2z"/>
+        </svg>
+      </div>
+      <div class="icon rectangle" data-shape="rectangle" title="Прямоугольник">
+        <svg viewBox="0 0 16 16">
+          <rect x="3" y="3" width="10" height="10" rx="1" ry="1"/>
+        </svg>
+      </div>
+      <div class="icon circle" data-shape="circle" title="Круг">
+        <svg viewBox="0 0 16 16">
+          <circle cx="8" cy="8" r="5"/>
+        </svg>
+      </div>
+      <div class="icon arrow" data-shape="arrow" title="Стрелка">
+        <svg viewBox="0 0 16 16">
+          <path d="M2 8h9l-3.5-3.5L9 3l5 5-5 5-1.5-1.5L11 8H2z"/>
+        </svg>
+      </div>
+      <div class="icon text" data-shape="text" title="Текст">
+        <svg viewBox="0 0 16 16">
+          <text x="3" y="12" font-size="10" font-family="Arial" fill="currentColor">T</text>
+        </svg>
+      </div>
     </div>
-    <div class="form-group">
-      <label for="colorPicker">Fill Color</label>
-      <input type="color" id="colorPicker" value="#ff0000" />
+    <div>
+      <label>
+        <input type="checkbox" id="snapToGrid" />
+        Привязка к сетке
+      </label>
     </div>
-    <div class="form-group">
-      <label for="fillOpacityRange">Fill Opacity</label>
-      <input type="range" id="fillOpacityRange" min="0" max="1" step="0.1" value="1" />
+    <div class="sidebar-header">
+      <h2>Слои</h2>
     </div>
-    <div class="form-group">
-      <label for="borderColorPicker">Border Color</label>
-      <input type="color" id="borderColorPicker" value="#000000" />
+    <!-- Кнопки Undo/Redo под заголовком "Слои" -->
+    <div class="layer-controls">
+      <div id="undo" class="btn-undo-redo" title="Отменить (Undo)">
+        <svg viewBox="0 0 24 24">
+          <path d="M12.5 8c-2.14 0-3.86 1.72-3.86 3.86v.76L6 10v6h6l-2.64-2.64v-.5A1.86 1.86 0 0112.5 12c.86 0 1.64.56 1.84 1.4.12.5.62.8 1.14.8.08 0 .16-.01.24-.03.62-.17 1.02-.8.85-1.42A3.86 3.86 0 0012.5 8z"/>
+        </svg>
+      </div>
+      <div id="redo" class="btn-undo-redo" title="Повторить (Redo)">
+        <svg viewBox="0 0 24 24">
+          <path d="M13.64 7.36A3.86 3.86 0 0010.5 6c-2.14 0-3.86 1.72-3.86 3.86 0 .62.23 1.25.68 1.84.28.38.21.93-.17 1.22-.38.28-.93.21-1.22-.17A5.78 5.78 0 014.78 9.86 5.86 5.86 0 0110.5 4c2.23 0 4.15 1.3 5.06 3.16l1.44-1.44V12h-6l2.64-2.64z"/>
+        </svg>
+      </div>
     </div>
-    <div class="form-group">
-      <label for="borderOpacityRange">Border Opacity</label>
-      <input type="range" id="borderOpacityRange" min="0" max="1" step="0.1" value="1" />
-    </div>
-    <div class="form-group">
-      <label for="borderWidth">Border Width</label>
-      <input type="number" id="borderWidth" min="0" max="20" value="1" />
-    </div>
-    <div class="form-group">
-      <label><input type="checkbox" id="snapToGrid" /> Snap to Grid</label>
-    </div>
-    <div class="form-group group-btn">
-      <button id="groupShapes">Group</button>
-      <button id="ungroupShapes">Ungroup</button>
-    </div>
-    <div class="form-group">
-      <button id="undo">Undo</button>
-      <button id="redo">Redo</button>
-    </div>
-    <div class="form-group">
-      <button id="export">Export</button>
-    </div>
-    <button id="deleteShape">Delete Shape</button>
-    <h3>Layers</h3>
     <div class="layers" id="layersList">
-      <!-- Если слоёв нет, отображается сообщение -->
-      <p id="noLayersMsg" style="color:#666; text-align:center;">Нет слоёв</p>
+      <p id="noLayersMsg">Нет слоёв</p>
     </div>
-    <div class="form-group" id="driveControls">
-      <label>Google Drive Integration</label>
-      <button id="signin_button">Sign In</button>
-      <button id="signout_button" style="display:none">Sign Out</button>
+    <div id="driveControls" class="form-group">
+      <label>Интеграция с Google Drive</label>
+      <button id="signin_button">Войти</button>
+      <button id="signout_button" style="display:none;">Выйти</button>
       <div id="driveFileList"></div>
     </div>
   </div>
 
+  <!-- Холст -->
   <div class="canvas-container">
     <div class="canvas"></div>
+    <!-- Панель управления (однострочная) -->
+    <div id="colorPanel" class="color-panel">
+      <label>Fill:</label>
+      <input type="color" id="cpFillColor" value="#ff0000" />
+      <label>Op:</label>
+      <input type="range" id="cpFillOpacity" min="0" max="1" step="0.1" value="1" />
+      <label>Border:</label>
+      <input type="color" id="cpBorderColor" value="#000000" />
+      <label>Op:</label>
+      <input type="range" id="cpBorderOpacity" min="0" max="1" step="0.1" value="1" />
+      <label>BW:</label>
+      <input type="number" id="cpBorderWidth" min="0" max="20" value="1" />
+      <label>W:</label>
+      <input type="number" id="cpWidth" min="0" max="2000" value="100" />
+      <label>H:</label>
+      <input type="number" id="cpHeight" min="0" max="2000" value="100" />
+      <button id="cpClose">Close</button>
+    </div>
   </div>
 
-  <!-- Скрипт интеграции с Google Drive -->
+  <!-- Скрипты Google Drive (без изменений) -->
   <script>
     "use strict";
     const CLIENT_ID = "158627123477-4m4d7dqms8ndlmfq4mejhdguj1jte08m.apps.googleusercontent.com";
@@ -379,23 +427,20 @@ document.body.innerHTML = `
     let accessToken = null;
     let tokenClient = null;
     let currentFileId = null;
-
     window.onload = () => {
       tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID,
         scope: SCOPES,
         callback: (tokenResponse) => {
           accessToken = tokenResponse.access_token;
-          console.log("Got access token", accessToken);
+          console.log("Access token получен:", accessToken);
           listFiles();
         },
       });
     };
-
     function handleSignInClick() {
       tokenClient.requestAccessToken({ prompt: "" });
     }
-
     function handleSignOutClick() {
       if (accessToken) {
         fetch("https://oauth2.googleapis.com/revoke?token=" + accessToken, {
@@ -411,10 +456,9 @@ document.body.innerHTML = `
       document.getElementById('signin_button').style.display = 'block';
       document.getElementById('signout_button').style.display = 'none';
     }
-
     async function listFiles() {
       if (!accessToken) {
-        console.warn("No access token. Sign in first.");
+        console.warn("Нет access token. Сначала войдите.");
         return;
       }
       try {
@@ -433,18 +477,17 @@ document.body.innerHTML = `
             fileListElem.appendChild(div);
           });
         } else {
-          fileListElem.innerHTML = 'No files found.';
+          fileListElem.innerHTML = 'Файлы не найдены.';
         }
         document.getElementById('signin_button').style.display = 'none';
         document.getElementById('signout_button').style.display = 'block';
       } catch (err) {
-        console.error("Error listing files", err);
+        console.error("Ошибка при получении списка файлов", err);
       }
     }
-
     async function loadFromDrive(fileId) {
       if (!accessToken) {
-        alert("No access token");
+        alert("Нет access token");
         return;
       }
       try {
@@ -454,15 +497,14 @@ document.body.innerHTML = `
         const fileContent = await resp.text();
         document.querySelector('.canvas-container').innerHTML = fileContent;
         currentFileId = fileId;
-        alert('File loaded from Drive.');
+        alert('Файл загружен из Drive.');
       } catch (error) {
-        console.error('Error loading file', error);
+        console.error('Ошибка загрузки файла', error);
       }
     }
-
     async function saveToDrive() {
       if (!accessToken) {
-        console.warn("No access token to save.");
+        console.warn("Нет access token для сохранения.");
         return;
       }
       if (!currentFileId) {
@@ -471,7 +513,6 @@ document.body.innerHTML = `
         await updateFileOnDrive(currentFileId);
       }
     }
-
     async function createFileOnDrive() {
       try {
         const contentHtml = document.querySelector('.canvas').outerHTML;
@@ -480,7 +521,6 @@ document.body.innerHTML = `
         const form = new FormData();
         form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
         form.append('file', contentBlob);
-
         const resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
           method: 'POST',
           headers: { Authorization: `Bearer ${accessToken}` },
@@ -488,12 +528,11 @@ document.body.innerHTML = `
         });
         const result = await resp.json();
         currentFileId = result.id;
-        alert('File created on Drive: ' + currentFileId);
+        alert('Файл создан в Drive: ' + currentFileId);
       } catch (error) {
-        console.error('Error creating file', error);
+        console.error('Ошибка создания файла', error);
       }
     }
-
     async function updateFileOnDrive(fileId) {
       try {
         const contentHtml = document.querySelector('.canvas').outerHTML;
@@ -502,26 +541,40 @@ document.body.innerHTML = `
         const form = new FormData();
         form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
         form.append('file', contentBlob);
-
         await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`, {
           method: 'PATCH',
           headers: { Authorization: `Bearer ${accessToken}` },
           body: form
         });
       } catch (error) {
-        console.error('Error updating file', error);
+        console.error('Ошибка обновления файла', error);
       }
     }
   </script>
 
-  <!-- Основной скрипт приложения рисования -->
+  <!-- Основной скрипт для рисования и редактирования фигур -->
   <script>
     "use strict";
     const canvas = document.querySelector(".canvas");
-    const layersList = document.querySelector("#layersList");
+    const snapToGridCheckbox = document.getElementById("snapToGrid");
+    const shapeIcons = document.querySelectorAll(".icon");
+
+    const layersList = document.getElementById("layersList");
     const noLayersMsg = document.getElementById("noLayersMsg");
 
-    // Константы и начальные переменные
+    const undoButton = document.getElementById("undo");
+    const redoButton = document.getElementById("redo");
+
+    const colorPanel = document.getElementById("colorPanel");
+    const cpFillColor = document.getElementById("cpFillColor");
+    const cpFillOpacity = document.getElementById("cpFillOpacity");
+    const cpBorderColor = document.getElementById("cpBorderColor");
+    const cpBorderOpacity = document.getElementById("cpBorderOpacity");
+    const cpBorderWidth = document.getElementById("cpBorderWidth");
+    const cpWidth = document.getElementById("cpWidth");
+    const cpHeight = document.getElementById("cpHeight");
+    const cpClose = document.getElementById("cpClose");
+
     const GRID_SIZE = 20;
     let selectedShapeType = "pointer";
     let shapes = [];
@@ -530,693 +583,559 @@ document.body.innerHTML = `
     let startX = 0;
     let startY = 0;
     let currentShape = null;
-    let selectedShapes = new Set();
+    let selectedShape = null;
 
-    let selectedFillColor = "#ff0000";
-    let selectedFillOpacity = 1;
-    let selectedBorderColor = "#000000";
-    let selectedBorderOpacity = 1;
-    let selectedBorderWidth = 1;
-
-    // Элементы управления
-    const colorPicker = document.querySelector("#colorPicker");
-    const fillOpacityRange = document.querySelector("#fillOpacityRange");
-    const borderColorPicker = document.querySelector("#borderColorPicker");
-    const borderOpacityRange = document.querySelector("#borderOpacityRange");
-    const borderWidthInput = document.querySelector("#borderWidth");
-    const snapToGridCheckbox = document.querySelector("#snapToGrid");
-    const groupBtn = document.querySelector("#groupShapes");
-    const ungroupBtn = document.querySelector("#ungroupShapes");
-    const undoButton = document.querySelector("#undo");
-    const redoButton = document.querySelector("#redo");
-    const exportButton = document.querySelector("#export");
-    const shapeIcons = document.querySelectorAll(".icon");
-    const deleteButton = document.querySelector("#deleteShape");
-    const signinButton = document.getElementById("signin_button");
-    const signoutButton = document.getElementById("signout_button");
-
-    // Автоматическое сохранение каждые 5 секунд, если выполнена авторизация
-    setInterval(() => {
-      if (accessToken) {
-        saveToDrive();
-      }
-    }, 5000);
-
-    // Генерация уникального ID
-    function generateId() {
-      return "id-" + Math.random().toString(36).substr(2, 9);
-    }
-
-    // Парсинг числа
-    function safeParseFloat(val, def = 1) {
-      const parsed = parseFloat(val);
-      return isNaN(parsed) ? def : parsed;
-    }
-
-    // Преобразование HEX в RGB
-    function hexToRgb(hex) {
-      hex = hex.replace(/^#/, "");
-      if (hex.length === 3) {
-        return {
-          r: parseInt(hex[0] + hex[0], 16),
-          g: parseInt(hex[1] + hex[1], 16),
-          b: parseInt(hex[2] + hex[2], 16)
-        };
-      } else if (hex.length === 6) {
-        return {
-          r: parseInt(hex.substring(0, 2), 16),
-          g: parseInt(hex.substring(2, 4), 16),
-          b: parseInt(hex.substring(4, 6), 16)
-        };
-      }
-      return null;
-    }
-
-    // Функция привязки к сетке
-    function snap(value, gridSize) {
-      return Math.round(value / gridSize) * gridSize;
-    }
-
-    // Обработчики переключения инструментов
+    /* Выбор инструмента */
     shapeIcons.forEach(icon => {
       icon.addEventListener("click", () => {
         shapeIcons.forEach(i => i.classList.remove("active"));
         icon.classList.add("active");
         selectedShapeType = icon.getAttribute("data-shape");
+        if (selectedShapeType !== "pointer") hideColorPanel();
       });
     });
 
-    // Обновление списка слоёв
+    /* Утилиты */
+    function generateId() {
+      return 'shape-' + Math.random().toString(36).substr(2, 9);
+    }
+    function snap(value, gridSize) {
+      return Math.round(value / gridSize) * gridSize;
+    }
+    function hexToRgb(hex) {
+      const bigint = parseInt(hex.replace("#", ""), 16);
+      return {
+        r: (bigint >> 16) & 255,
+        g: (bigint >> 8) & 255,
+        b: bigint & 255
+      };
+    }
+    function rgbToHex(rgb) {
+      if (!rgb) return "";
+      const result = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/i.exec(rgb);
+      return result
+        ? "#" +
+          ("0" + parseInt(result[1], 10).toString(16)).slice(-2) +
+          ("0" + parseInt(result[2], 10).toString(16)).slice(-2) +
+          ("0" + parseInt(result[3], 10).toString(16)).slice(-2)
+        : "";
+    }
+    function getCurrentRotation(el) {
+      const st = window.getComputedStyle(el, null);
+      const tr = st.getPropertyValue("transform");
+      if (tr && tr !== "none") {
+        const values = tr.split("(")[1].split(")")[0].split(",");
+        const a = parseFloat(values[0]);
+        const b = parseFloat(values[1]);
+        const angle = Math.round(Math.atan2(b, a) * (180 / Math.PI));
+        return angle;
+      }
+      return 0;
+    }
+
+    /* Слои */
     function renderLayers() {
       layersList.innerHTML = "";
       if (shapes.length === 0) {
         layersList.appendChild(noLayersMsg);
         return;
       }
-      const sorted = [...shapes].sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0));
-      sorted.forEach(shape => {
+      shapes.forEach((shape, index) => {
         const div = document.createElement("div");
         div.classList.add("layer-item");
-        if (selectedShapes.has(shape.id)) {
+        div.draggable = true;
+        div.textContent = `${shape.type} (${shape.id})`;
+        const delBtn = document.createElement("button");
+        delBtn.classList.add("delete-layer-button");
+        delBtn.textContent = "X";
+        delBtn.title = "Удалить фигуру";
+        delBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          shape.element.remove();
+          shapes = shapes.filter(s => s.id !== shape.id);
+          if (selectedShape && selectedShape.id === shape.id) {
+            selectedShape = null;
+            hideColorPanel();
+          }
+          renderLayers();
+        });
+        div.appendChild(delBtn);
+        if (selectedShape && selectedShape.id === shape.id) {
           div.classList.add("selected");
         }
-        div.textContent = `${shape.type} (${shape.id})`;
-        div.draggable = true;
+        div.addEventListener("click", () => selectShape(shape));
         div.addEventListener("dragstart", e => {
-          e.dataTransfer.setData("text/plain", shape.id);
-          div.classList.add("layer-moving");
+          e.dataTransfer.setData("text/plain", String(index));
         });
-        div.addEventListener("dragend", () => div.classList.remove("layer-moving"));
         div.addEventListener("dragover", e => e.preventDefault());
         div.addEventListener("drop", e => {
           e.preventDefault();
-          const draggedId = e.dataTransfer.getData("text/plain");
-          if (draggedId !== shape.id) {
-            reorderShapes(draggedId, shape.id);
+          const fromIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
+          const toIndex = index;
+          if (fromIndex !== toIndex) {
+            const moved = shapes.splice(fromIndex, 1)[0];
+            shapes.splice(toIndex, 0, moved);
+            reassignZIndices();
           }
-          div.classList.remove("layer-moving");
-        });
-        div.addEventListener("click", e => {
-          e.stopPropagation();
-          if (!e.shiftKey) selectedShapes.clear();
-          selectedShapes.has(shape.id) ? selectedShapes.delete(shape.id) : selectedShapes.add(shape.id);
-          updateSelectionUI();
-          renderLayers();
         });
         layersList.appendChild(div);
       });
     }
-
-    // Подсветка выбранных фигур
-    function updateSelectionUI() {
-      shapes.forEach(s => {
-        // Используем s.element для всех фигур (для стрелок оно теперь установлено)
-        s.element.classList.remove("selected");
-        if (selectedShapes.has(s.id)) {
-          s.element.classList.add("selected");
-        }
-      });
-    }
-
-    // Переназначение z-index для фигур
     function reassignZIndices() {
-      shapes.sort((a, b) => (a.zIndex || 1) - (b.zIndex || 1));
       shapes.forEach((s, i) => {
         s.zIndex = i + 1;
         s.element.style.zIndex = s.zIndex;
       });
       renderLayers();
     }
-
-    // Перестановка фигур (при перетаскивании в списке слоёв)
-    function reorderShapes(draggedId, targetId) {
-      const draggedShape = shapes.find(s => s.id === draggedId);
-      const targetShape = shapes.find(s => s.id === targetId);
-      if (!draggedShape || !targetShape || draggedShape.id === targetShape.id) return;
-      draggedShape.element.classList.add("layer-moving");
-      targetShape.element.classList.add("layer-moving");
-      setTimeout(() => {
-        draggedShape.element.classList.remove("layer-moving");
-        targetShape.element.classList.remove("layer-moving");
-      }, 500);
-      const tempZ = draggedShape.zIndex;
-      draggedShape.zIndex = targetShape.zIndex;
-      targetShape.zIndex = tempZ;
-      reassignZIndices();
+    function selectShape(shapeObj) {
+      selectedShape = shapeObj;
+      updateSelectionUI();
+      showColorPanel(shapeObj);
+    }
+    function updateSelectionUI() {
+      shapes.forEach(s => s.element.classList.remove("selected"));
+      if (selectedShape) {
+        selectedShape.element.classList.add("selected");
+      }
+      renderLayers();
     }
 
-    // Создание стрелки с наконечником
-    function createArrowShape(e) {
+    /* Панель свойств – теперь однострочная и над фигурой */
+    function showColorPanel(shapeObj) {
+      const compStyle = window.getComputedStyle(shapeObj.element);
+      // Fill
+      const bg = compStyle.backgroundColor;
+      const fillMatch = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+      if (fillMatch) {
+        cpFillColor.value = rgbToHex(`rgb(${fillMatch[1]},${fillMatch[2]},${fillMatch[3]})`);
+        cpFillOpacity.value = fillMatch[4] ? parseFloat(fillMatch[4]) : 1;
+      } else {
+        cpFillColor.value = "#ff0000";
+        cpFillOpacity.value = "1";
+      }
+      // Border
+      const bc = compStyle.borderColor;
+      const borderMatch = bc.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+      if (borderMatch) {
+        cpBorderColor.value = rgbToHex(`rgb(${borderMatch[1]},${borderMatch[2]},${borderMatch[3]})`);
+        cpBorderOpacity.value = borderMatch[4] ? parseFloat(borderMatch[4]) : 1;
+      } else {
+        cpBorderColor.value = "#000000";
+        cpBorderOpacity.value = "1";
+      }
+      cpBorderWidth.value = parseInt(compStyle.borderWidth) || 1;
+      // Размеры (ширина и высота)
+      cpWidth.value = parseInt(compStyle.width) || 0;
+      cpHeight.value = parseInt(compStyle.height) || 0;
+      // Позиция: выше фигуры
+      const rect = shapeObj.element.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+      let top = rect.top - canvasRect.top - colorPanel.offsetHeight - 6;
+      if (top < 0) { top = rect.bottom - canvasRect.top + 6; }
+      colorPanel.style.left = (rect.left - canvasRect.left + 4) + "px";
+      colorPanel.style.top = top + "px";
+      colorPanel.style.display = "flex";
+    }
+    function hideColorPanel() {
+      colorPanel.style.display = "none";
+    }
+    cpFillColor.addEventListener("input", updateShapeStyle);
+    cpFillOpacity.addEventListener("input", updateShapeStyle);
+    cpBorderColor.addEventListener("input", updateShapeStyle);
+    cpBorderOpacity.addEventListener("input", updateShapeStyle);
+    cpBorderWidth.addEventListener("input", updateShapeStyle);
+    cpWidth.addEventListener("input", () => {
+      if (selectedShape) {
+        selectedShape.element.style.width = cpWidth.value + "px";
+        showColorPanel(selectedShape);
+      }
+    });
+    cpHeight.addEventListener("input", () => {
+      if (selectedShape) {
+        selectedShape.element.style.height = cpHeight.value + "px";
+        showColorPanel(selectedShape);
+      }
+    });
+    cpClose.addEventListener("click", hideColorPanel);
+    function updateShapeStyle() {
+      if (!selectedShape) return;
+      const fillRgb = hexToRgb(cpFillColor.value);
+      const fillOp = parseFloat(cpFillOpacity.value);
+      selectedShape.element.style.backgroundColor = `rgba(${fillRgb.r},${fillRgb.g},${fillRgb.b},${fillOp})`;
+      const borderRgb = hexToRgb(cpBorderColor.value);
+      const borderOp = parseFloat(cpBorderOpacity.value);
+      selectedShape.element.style.borderColor = `rgba(${borderRgb.r},${borderRgb.g},${borderRgb.b},${borderOp})`;
+      selectedShape.element.style.borderWidth = cpBorderWidth.value + "px";
+    }
+
+    /* Создание фигур */
+    function createArrow(e) {
       const rect = canvas.getBoundingClientRect();
-      const startX = e.clientX - rect.left;
-      const startY = e.clientY - rect.top;
-      const arrowId = generateId();
-
-      // Создаем контейнер стрелки
-      const arrowContainer = document.createElement('div');
-      arrowContainer.classList.add('arrow-container');
-      arrowContainer.dataset.id = arrowId;
-      arrowContainer.style.position = 'absolute';
-      arrowContainer.style.left = startX + 'px';
-      arrowContainer.style.top = startY + 'px';
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const id = generateId();
+      const arrowContainer = document.createElement("div");
+      arrowContainer.classList.add("arrow-container");
+      arrowContainer.dataset.id = id;
+      arrowContainer.style.left = x + "px";
+      arrowContainer.style.top = y + "px";
       arrowContainer.style.zIndex = shapes.length + 1;
-
-      // Создаем стержень стрелки
-      const arrowShaft = document.createElement('div');
-      arrowShaft.classList.add('arrow-shaft');
-      arrowShaft.style.left = '0';
-      arrowShaft.style.top = '50%';
-      arrowShaft.style.height = selectedBorderWidth + 'px';
-      arrowShaft.style.backgroundColor = selectedBorderColor;
-      arrowShaft.style.transform = 'translateY(-50%)';
+      // Стержень
+      const arrowShaft = document.createElement("div");
+      arrowShaft.classList.add("arrow-shaft");
+      const bw = parseInt(cpBorderWidth.value) || 1;
+      arrowShaft.style.height = bw + "px";
+      const bRgb = hexToRgb(cpBorderColor.value);
+      const bOp = parseFloat(cpBorderOpacity.value) || 1;
+      const borderColor = `rgba(${bRgb.r},${bRgb.g},${bRgb.b},${bOp})`;
+      arrowShaft.style.backgroundColor = borderColor;
+      // Наконечник
+      const arrowHead = document.createElement("div");
+      arrowHead.classList.add("arrow-head");
+      arrowHead.style.borderLeft = "10px solid " + borderColor;
+      // Ручки для редактирования
+      const startHandle = document.createElement("div");
+      startHandle.classList.add("arrow-handle");
+      const endHandle = document.createElement("div");
+      endHandle.classList.add("arrow-handle");
       arrowContainer.appendChild(arrowShaft);
-
-      // Создаем наконечник стрелки
-      const arrowHead = document.createElement('div');
-      arrowHead.classList.add('arrow-head');
-      arrowHead.style.borderTop = '5px solid transparent';
-      arrowHead.style.borderBottom = '5px solid transparent';
-      arrowHead.style.borderLeft = '10px solid ' + selectedBorderColor;
       arrowContainer.appendChild(arrowHead);
-
+      arrowContainer.appendChild(startHandle);
+      arrowContainer.appendChild(endHandle);
       canvas.appendChild(arrowContainer);
-
-      // Важно: для стрелок присваиваем свойство element, чтобы остальные функции могли работать с ними
       const arrowObj = {
-        id: arrowId,
+        id,
         element: arrowContainer,
         shaft: arrowShaft,
         head: arrowHead,
-        type: 'arrow',
+        type: "arrow",
         zIndex: shapes.length + 1,
-        startX, startY,
-        endX: startX,
-        endY: startY
+        startX: x, startY: y,
+        endX: x, endY: y,
+        startHandle, endHandle
       };
-
       shapes.push(arrowObj);
-      selectedShapes.clear();
-      selectedShapes.add(arrowId);
-      updateSelectionUI();
-      renderLayers();
-
+      selectShape(arrowObj);
+      addArrowHandleEvents(arrowObj);
       function mouseMove(ev) {
         const nx = ev.clientX - rect.left;
         const ny = ev.clientY - rect.top;
         arrowObj.endX = nx;
         arrowObj.endY = ny;
-        const dx = nx - startX;
-        const dy = ny - startY;
-        const length = Math.sqrt(dx * dx + dy * dy);
-        arrowShaft.style.width = length + 'px';
-        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-        arrowContainer.style.transform = `rotate(${angle}deg)`;
-        // Располагаем наконечник в конце линии
-        arrowHead.style.left = (length - 10) + 'px';
-        arrowHead.style.top = '50%';
-        arrowHead.style.transform = 'translateY(-50%)';
+        updateArrowUI(arrowObj);
       }
       function mouseUp() {
-        document.removeEventListener('mousemove', mouseMove);
-        document.removeEventListener('mouseup', mouseUp);
+        document.removeEventListener("mousemove", mouseMove);
+        document.removeEventListener("mouseup", mouseUp);
       }
-      document.addEventListener('mousemove', mouseMove);
-      document.addEventListener('mouseup', mouseUp);
+      document.addEventListener("mousemove", mouseMove);
+      document.addEventListener("mouseup", mouseUp);
     }
-
-    // Создание текстовой фигуры
+    function updateArrowUI(arrowObj) {
+      const { startX, startY, endX, endY, element, shaft, head, startHandle, endHandle } = arrowObj;
+      const dx = endX - startX;
+      const dy = endY - startY;
+      const length = Math.sqrt(dx * dx + dy * dy);
+      // Поворот
+      const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+      // Устанавливаем положение контейнера в точке начала
+      element.style.left = startX + "px";
+      element.style.top = startY + "px";
+      element.style.transformOrigin = "0 0";
+      element.style.transform = `rotate(${angle}deg)`;
+      shaft.style.width = length + "px";
+      head.style.left = (length - 10) + "px";
+      head.style.top = "50%";
+      head.style.transform = "translateY(-50%)";
+      // Ручки
+      startHandle.style.left = "0px";
+      startHandle.style.top = "50%";
+      endHandle.style.left = length + "px";
+      endHandle.style.top = "50%";
+    }
+    function addArrowHandleEvents(arrowObj) {
+      const { startHandle, endHandle } = arrowObj;
+      startHandle.addEventListener("mousedown", e => {
+        e.stopPropagation();
+        const rect = canvas.getBoundingClientRect();
+        function onMouseMove(ev) {
+          arrowObj.startX = snapToGridCheckbox.checked ? snap(ev.clientX - rect.left, GRID_SIZE) : ev.clientX - rect.left;
+          arrowObj.startY = snapToGridCheckbox.checked ? snap(ev.clientY - rect.top, GRID_SIZE) : ev.clientY - rect.top;
+          updateArrowUI(arrowObj);
+        }
+        function onMouseUp() {
+          document.removeEventListener("mousemove", onMouseMove);
+          document.removeEventListener("mouseup", onMouseUp);
+        }
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("mouseup", onMouseUp);
+      });
+      endHandle.addEventListener("mousedown", e => {
+        e.stopPropagation();
+        const rect = canvas.getBoundingClientRect();
+        function onMouseMove(ev) {
+          arrowObj.endX = snapToGridCheckbox.checked ? snap(ev.clientX - rect.left, GRID_SIZE) : ev.clientX - rect.left;
+          arrowObj.endY = snapToGridCheckbox.checked ? snap(ev.clientY - rect.top, GRID_SIZE) : ev.clientY - rect.top;
+          updateArrowUI(arrowObj);
+        }
+        function onMouseUp() {
+          document.removeEventListener("mousemove", onMouseMove);
+          document.removeEventListener("mouseup", onMouseUp);
+        }
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("mouseup", onMouseUp);
+      });
+    }
     function createTextShape(e) {
-      if (selectedShapeType === 'pointer') return;
-      if (selectedShapeType === 'arrow') {
-        createArrowShape(e);
-        return;
-      }
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       const id = generateId();
-      const el = document.createElement('div');
-      el.classList.add('shape', 'shape-text');
-      el.style.left = x + 'px';
-      el.style.top = y + 'px';
-      el.style.backgroundColor = 'transparent';
-      el.style.border = 'none';
-      el.style.zIndex = shapes.length + 1;
-      el.style.minWidth = '50px';
-      el.style.minHeight = '20px';
+      const el = document.createElement("div");
+      el.classList.add("shape", "shape-text");
       el.dataset.id = id;
-      el.contentEditable = 'true';
-      el.innerText = 'Your Text';
-      addShapeEventListeners(el);
+      el.style.left = x + "px";
+      el.style.top = y + "px";
+      el.style.border = "none";
+      el.contentEditable = "true";
+      el.innerText = "";
       canvas.appendChild(el);
-      const shapeObj = { id, element: el, type: 'text', zIndex: shapes.length + 1 };
+      // Сразу фокус для редактирования (многострочный текст)
+      setTimeout(() => { el.focus(); }, 0);
+      const shapeObj = { id, element: el, type: "text", zIndex: shapes.length + 1 };
       shapes.push(shapeObj);
-      selectedShapes.clear();
-      selectedShapes.add(id);
-      updateSelectionUI();
+      addShapeEventListeners(el);
+      selectShape(shapeObj);
+      showColorPanel(shapeObj);
       addResizeHandle(el);
       addRotateHandle(el);
-      renderLayers();
     }
-
-    // Создание фигур (прямоугольник, круг)
-    function createNewShape() {
-      if (selectedShapeType === 'pointer' || selectedShapeType === 'arrow') return null;
+    function createRectOrCircle() {
       const id = generateId();
-      const el = document.createElement('div');
-      el.classList.add('shape');
-      if (selectedShapeType === 'circle') el.classList.add('circle');
-      const fillRgb = hexToRgb(selectedFillColor) || { r: 0, g: 0, b: 0 };
-      const borderRgb = hexToRgb(selectedBorderColor) || { r: 0, g: 0, b: 0 };
-      el.style.backgroundColor = `rgba(${fillRgb.r}, ${fillRgb.g}, ${fillRgb.b}, ${selectedFillOpacity})`;
-      el.style.borderWidth = selectedBorderWidth + 'px';
-      el.style.borderColor = `rgba(${borderRgb.r}, ${borderRgb.g}, ${borderRgb.b}, ${selectedBorderOpacity})`;
-      el.style.left = startX + 'px';
-      el.style.top = startY + 'px';
-      el.style.width = '0px';
-      el.style.height = '0px';
+      const el = document.createElement("div");
+      el.classList.add("shape");
+      if (selectedShapeType === "circle") el.classList.add("circle");
       el.dataset.id = id;
-      addShapeEventListeners(el);
-
+      const fillRgb = hexToRgb(cpFillColor.value) || { r: 0, g: 0, b: 0 };
+      const fillOp = parseFloat(cpFillOpacity.value) || 1;
+      el.style.backgroundColor = `rgba(${fillRgb.r},${fillRgb.g},${fillRgb.b},${fillOp})`;
+      const borderRgb = hexToRgb(cpBorderColor.value) || { r: 0, g: 0, b: 0 };
+      const borderOp = parseFloat(cpBorderOpacity.value) || 1;
+      const borderW = parseInt(cpBorderWidth.value) || 1;
+      el.style.borderWidth = borderW + "px";
+      el.style.borderColor = `rgba(${borderRgb.r},${borderRgb.g},${borderRgb.b},${borderOp})`;
+      canvas.appendChild(el);
       const shapeObj = { id, element: el, type: selectedShapeType, zIndex: shapes.length + 1 };
       shapes.push(shapeObj);
-      el.style.zIndex = shapeObj.zIndex;
+      addShapeEventListeners(el);
+      selectShape(shapeObj);
+      showColorPanel(shapeObj);
       return shapeObj;
     }
-
+    /* События фигур */
     function addShapeEventListeners(el) {
-      el.addEventListener('mousedown', shapeMouseDown);
-    }
-
-    // Обработка клика по фигурам – если выбран инструмент pointer, то фигура перемещается
-    function shapeMouseDown(e) {
-      if (isDrawing) return;
-      e.stopPropagation();
-      const shapeEl = e.currentTarget;
-      const shapeId = shapeEl.dataset.id;
-      if (!e.shiftKey) selectedShapes.clear();
-      if (!selectedShapes.has(shapeId)) selectedShapes.add(shapeId);
-      updateSelectionUI();
-      renderLayers();
-
-      if (selectedShapeType === 'pointer') {
+      el.addEventListener("mousedown", e => {
+        if (isDrawing) return;
+        e.stopPropagation();
+        selectedShape = shapes.find(s => s.id === el.dataset.id);
+        updateSelectionUI();
+        showColorPanel(selectedShape);
+        if (selectedShape.type === "arrow") return;
         const offsetX = e.offsetX;
         const offsetY = e.offsetY;
         function mouseMove(ev) {
-          const cRect = canvas.getBoundingClientRect();
-          let left = ev.clientX - cRect.left - offsetX;
-          let top = ev.clientY - cRect.top - offsetY;
+          const rect = canvas.getBoundingClientRect();
+          let left = ev.clientX - rect.left - offsetX;
+          let top = ev.clientY - rect.top - offsetY;
           if (snapToGridCheckbox.checked) {
             left = snap(left, GRID_SIZE);
             top = snap(top, GRID_SIZE);
           }
-          selectedShapes.forEach(sId => {
-            const sObj = shapes.find(obj => obj.id === sId);
-            if (!sObj) return;
-            const dx = parseInt(sObj.element.style.left) - parseInt(shapeEl.style.left);
-            const dy = parseInt(sObj.element.style.top) - parseInt(shapeEl.style.top);
-            sObj.element.style.left = (left + dx) + 'px';
-            sObj.element.style.top = (top + dy) + 'px';
-          });
+          selectedShape.element.style.left = left + "px";
+          selectedShape.element.style.top = top + "px";
+          showColorPanel(selectedShape);
         }
         function mouseUp() {
-          document.removeEventListener('mousemove', mouseMove);
-          document.removeEventListener('mouseup', mouseUp);
+          document.removeEventListener("mousemove", mouseMove);
+          document.removeEventListener("mouseup", mouseUp);
         }
-        document.addEventListener('mousemove', mouseMove);
-        document.addEventListener('mouseup', mouseUp);
-      }
-    }
-
-    // Добавление ручки изменения размера
-    function addResizeHandle(shapeEl) {
-      if (shapeEl.querySelector('.resize-handle')) return;
-      const resize = document.createElement('div');
-      resize.classList.add('resize-handle');
-      shapeEl.appendChild(resize);
-      resize.addEventListener('mousedown', e => {
-        e.stopPropagation();
-        const initialX = e.clientX;
-        const initialY = e.clientY;
-        const initialW = parseInt(shapeEl.style.width);
-        const initialH = parseInt(shapeEl.style.height);
-        const shapeLeft = parseInt(shapeEl.style.left);
-        const shapeTop = parseInt(shapeEl.style.top);
-        function onMouseMove(ev) {
-          const deltaX = ev.clientX - initialX;
-          const deltaY = ev.clientY - initialY;
-          let newWidth = initialW + deltaX;
-          let newHeight = initialH + deltaY;
-          if (newWidth < 0) {
-            shapeEl.style.left = (shapeLeft + newWidth) + 'px';
-            newWidth = Math.abs(newWidth);
-          }
-          if (newHeight < 0) {
-            shapeEl.style.top = (shapeTop + newHeight) + 'px';
-            newHeight = Math.abs(newHeight);
-          }
-          if (ev.shiftKey) {
-            const aspect = initialW / initialH || 1;
-            if (Math.abs(deltaX) > Math.abs(deltaY)) {
-              newHeight = newWidth / aspect;
-            } else {
-              newWidth = newHeight * aspect;
-            }
-          }
-          if (snapToGridCheckbox.checked) {
-            newWidth = snap(newWidth, GRID_SIZE);
-            newHeight = snap(newHeight, GRID_SIZE);
-          }
-          shapeEl.style.width = newWidth + 'px';
-          shapeEl.style.height = newHeight + 'px';
-        }
-        function onMouseUp() {
-          document.removeEventListener('mousemove', onMouseMove);
-          document.removeEventListener('mouseup', onMouseUp);
-        }
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
+        document.addEventListener("mousemove", mouseMove);
+        document.addEventListener("mouseup", mouseUp);
       });
     }
-
-    // Добавление ручки поворота
-    function addRotateHandle(shapeEl) {
-      if (shapeEl.querySelector('.rotate-handle')) return;
-      const rotate = document.createElement('div');
-      rotate.classList.add('rotate-handle');
-      shapeEl.appendChild(rotate);
-      rotate.addEventListener('mousedown', e => {
-        e.stopPropagation();
-        const rect = canvas.getBoundingClientRect();
-        const centerX = shapeEl.offsetLeft + shapeEl.offsetWidth / 2;
-        const centerY = shapeEl.offsetTop + shapeEl.offsetHeight / 2;
-        function onMouseMove(ev) {
-          const mouseX = ev.clientX - rect.left;
-          const mouseY = ev.clientY - rect.top;
-          const dx = mouseX - centerX;
-          const dy = mouseY - centerY;
-          const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-          shapeEl.style.transform = `rotate(${angle}deg)`;
-        }
-        function onMouseUp() {
-          document.removeEventListener('mousemove', onMouseMove);
-          document.removeEventListener('mouseup', onMouseUp);
-        }
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-      });
-    }
-
-    // Группировка выбранных фигур
-    groupBtn.addEventListener('click', () => {
-      if (selectedShapes.size < 2) return;
-      const groupId = generateId();
-      const groupEl = document.createElement('div');
-      groupEl.classList.add('shape');
-      groupEl.dataset.id = groupId;
-      groupEl.dataset.isGroup = 'true';
-      groupEl.style.position = 'absolute';
-      groupEl.style.border = '2px dashed #444';
-      canvas.appendChild(groupEl);
-
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-      const groupedShapes = [];
-      const canvasRect = canvas.getBoundingClientRect();
-      selectedShapes.forEach(sId => {
-        const sObj = shapes.find(s => s.id === sId);
-        if (!sObj) return;
-        const rect = sObj.element.getBoundingClientRect();
-        const offsetLeft = rect.left - canvasRect.left;
-        const offsetTop = rect.top - canvasRect.top;
-        minX = Math.min(minX, offsetLeft);
-        minY = Math.min(minY, offsetTop);
-        maxX = Math.max(maxX, offsetLeft + rect.width);
-        maxY = Math.max(maxY, offsetTop + rect.height);
-        groupedShapes.push(sObj);
-      });
-      groupEl.style.left = `${minX}px`;
-      groupEl.style.top = `${minY}px`;
-      groupEl.style.width = `${maxX - minX}px`;
-      groupEl.style.height = `${maxY - minY}px`;
-
-      groupedShapes.forEach(sObj => {
-        const rect = sObj.element.getBoundingClientRect();
-        const offsetLeft = rect.left - canvasRect.left;
-        const offsetTop = rect.top - canvasRect.top;
-        sObj.element.style.left = (offsetLeft - minX) + 'px';
-        sObj.element.style.top = (offsetTop - minY) + 'px';
-        groupEl.appendChild(sObj.element);
-      });
-      shapes = shapes.filter(s => !selectedShapes.has(s.id));
-      const groupObj = { id: groupId, element: groupEl, type: 'group', zIndex: shapes.length + 1 };
-      shapes.push(groupObj);
-      groupEl.style.zIndex = groupObj.zIndex;
-      selectedShapes.clear();
-      selectedShapes.add(groupId);
-      updateSelectionUI();
-      renderLayers();
-    });
-
-    // Разгруппировка
-    ungroupBtn.addEventListener('click', () => {
-      if (selectedShapes.size !== 1) return;
-      const id = [...selectedShapes][0];
-      const groupObj = shapes.find(s => s.id === id);
-      if (!groupObj || groupObj.type !== 'group') return;
-      const groupEl = groupObj.element;
-      const canvasRect = canvas.getBoundingClientRect();
-      while (groupEl.firstChild) {
-        const child = groupEl.firstChild;
-        if (child.classList && child.classList.contains('shape')) {
-          const childRect = child.getBoundingClientRect();
-          const offsetLeft = childRect.left - canvasRect.left;
-          const offsetTop = childRect.top - canvasRect.top;
-          child.style.left = offsetLeft + 'px';
-          child.style.top = offsetTop + 'px';
-          canvas.appendChild(child);
-          const childId = child.dataset.id;
-          let cShape = shapes.find(x => x.id === childId);
-          if (!cShape) {
-            cShape = { id: childId, element: child, type: child.classList.contains('circle') ? 'circle' : child.classList.contains('shape-text') ? 'text' : 'rectangle', zIndex: shapes.length + 1 };
-            shapes.push(cShape);
-            child.style.zIndex = cShape.zIndex;
-          } else {
-            cShape.zIndex = shapes.length + 1;
-            child.style.zIndex = cShape.zIndex;
-          }
-        } else {
-          groupEl.removeChild(child);
-        }
-      }
-      shapes = shapes.filter(s => s.id !== id);
-      groupEl.remove();
-      selectedShapes.clear();
-      renderLayers();
-    });
-
-    // Undo и Redo
-    undoButton.addEventListener('click', () => {
-      if (shapes.length > 0) {
-        const last = shapes.pop();
-        redoStack.push(last);
-        last.element.remove();
-        selectedShapes.delete(last.id);
-        renderLayers();
-      }
-    });
-
-    redoButton.addEventListener('click', () => {
-      if (redoStack.length > 0) {
-        const shapeObj = redoStack.pop();
-        shapes.push(shapeObj);
-        canvas.appendChild(shapeObj.element);
-        reassignZIndices();
-      }
-    });
-
-    // Экспорт
-    exportButton.addEventListener('click', () => {
-      const data = `<html>\n<body>\n${canvas.outerHTML}\n</body>\n</html>`;
-      const blob = new Blob([data], { type: 'text/html' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'drawing.html';
-      a.click();
-    });
-
-    // Удаление фигур
-    deleteButton.addEventListener('click', () => {
-      if (selectedShapes.size < 1) return;
-      selectedShapes.forEach(sId => {
-        const sObj = shapes.find(s => s.id === sId);
-        if (sObj) {
-          sObj.element.remove();
-          shapes = shapes.filter(s => s.id !== sId);
-        }
-      });
-      selectedShapes.clear();
-      renderLayers();
-    });
-
-    // Обновление стилей при изменении цвета и параметров границы
-    colorPicker.addEventListener('input', e => {
-      selectedFillColor = e.target.value;
-      selectedShapes.forEach(sId => {
-        const sObj = shapes.find(s => s.id === sId);
-        if (sObj && sObj.type !== 'group' && sObj.type !== 'arrow') {
-          const rgb = hexToRgb(selectedFillColor) || { r: 0, g: 0, b: 0 };
-          sObj.element.style.backgroundColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedFillOpacity})`;
-        }
-      });
-    });
-
-    fillOpacityRange.addEventListener('input', e => {
-      selectedFillOpacity = safeParseFloat(e.target.value, 1);
-      selectedShapes.forEach(sId => {
-        const sObj = shapes.find(s => s.id === sId);
-        if (sObj && sObj.type !== 'group' && sObj.type !== 'arrow') {
-          const fillRgb = hexToRgb(selectedFillColor) || { r: 0, g: 0, b: 0 };
-          sObj.element.style.backgroundColor = `rgba(${fillRgb.r}, ${fillRgb.g}, ${fillRgb.b}, ${selectedFillOpacity})`;
-        }
-      });
-    });
-
-    borderColorPicker.addEventListener('input', e => {
-      selectedBorderColor = e.target.value;
-      selectedShapes.forEach(sId => {
-        const sObj = shapes.find(s => s.id === sId);
-        if (sObj && sObj.type !== 'group') {
-          if (sObj.type === 'arrow') {
-            sObj.shaft.style.backgroundColor = selectedBorderColor;
-            sObj.head.style.borderLeft = '10px solid ' + selectedBorderColor;
-          } else {
-            const rgb = hexToRgb(selectedBorderColor) || { r: 0, g: 0, b: 0 };
-            sObj.element.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
-          }
-        }
-      });
-    });
-
-    borderOpacityRange.addEventListener('input', e => {
-      selectedBorderOpacity = safeParseFloat(e.target.value, 1);
-      selectedShapes.forEach(sId => {
-        const sObj = shapes.find(s => s.id === sId);
-        if (sObj && sObj.type !== 'group') {
-          if (sObj.type === 'arrow') {
-            const rgb = hexToRgb(selectedBorderColor) || { r: 0, g: 0, b: 0 };
-            sObj.shaft.style.backgroundColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
-            sObj.head.style.borderLeft = '10px solid rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + selectedBorderOpacity + ')';
-          } else {
-            const rgb = hexToRgb(selectedBorderColor) || { r: 0, g: 0, b: 0 };
-            sObj.element.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
-          }
-        }
-      });
-    });
-
-    borderWidthInput.addEventListener('input', e => {
-      selectedBorderWidth = parseInt(e.target.value);
-      selectedShapes.forEach(sId => {
-        const sObj = shapes.find(s => s.id === sId);
-        if (sObj && sObj.type !== 'group') {
-          if (sObj.type === 'arrow') {
-            const rgb = hexToRgb(selectedBorderColor) || { r: 0, g: 0, b: 0 };
-            sObj.shaft.style.height = selectedBorderWidth + 'px';
-            sObj.head.style.borderLeft = '10px solid rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + selectedBorderOpacity + ')';
-          } else {
-            sObj.element.style.borderWidth = selectedBorderWidth + 'px';
-          }
-        }
-      });
-    });
-
-    // Обработчики событий на холсте
-    canvas.addEventListener('mousedown', e => {
-      if (selectedShapeType === 'pointer') return;
-      if (selectedShapeType === 'arrow') {
-        createArrowShape(e);
+    /* Рисование */
+    canvas.addEventListener("mousedown", e => {
+      if (selectedShapeType === "pointer") return;
+      if (selectedShapeType === "arrow") {
+        createArrow(e);
         return;
       }
-      if (selectedShapeType === 'text') {
+      if (selectedShapeType === "text") {
         createTextShape(e);
         return;
       }
+      isDrawing = true;
       const rect = canvas.getBoundingClientRect();
       startX = e.clientX - rect.left;
       startY = e.clientY - rect.top;
-      isDrawing = true;
-      currentShape = createNewShape();
-      if (currentShape) {
-        canvas.appendChild(currentShape.element);
-        selectedShapes.clear();
-        selectedShapes.add(currentShape.id);
-        updateSelectionUI();
-      }
+      currentShape = createRectOrCircle();
+      currentShape.element.style.left = startX + "px";
+      currentShape.element.style.top = startY + "px";
+      currentShape.element.style.width = "0px";
+      currentShape.element.style.height = "0px";
     });
-
-    canvas.addEventListener('mousemove', e => {
+    canvas.addEventListener("mousemove", e => {
       if (!isDrawing || !currentShape) return;
       const rect = canvas.getBoundingClientRect();
-      let width = (e.clientX - rect.left) - parseInt(currentShape.element.style.left);
-      let height = (e.clientY - rect.top) - parseInt(currentShape.element.style.top);
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      let left = Math.min(startX, mouseX);
+      let top = Math.min(startY, mouseY);
+      let width = Math.abs(mouseX - startX);
+      let height = Math.abs(mouseY - startY);
       if (snapToGridCheckbox.checked) {
+        left = snap(left, GRID_SIZE);
+        top = snap(top, GRID_SIZE);
         width = snap(width, GRID_SIZE);
         height = snap(height, GRID_SIZE);
       }
-      currentShape.element.style.width = width + 'px';
-      currentShape.element.style.height = height + 'px';
-      if (currentShape.type === 'circle') {
-        currentShape.element.style.borderRadius = '50%';
+      currentShape.element.style.left = left + "px";
+      currentShape.element.style.top = top + "px";
+      currentShape.element.style.width = width + "px";
+      currentShape.element.style.height = height + "px";
+      if (currentShape.type === "circle") {
+        currentShape.element.style.borderRadius = "50%";
       }
+      showColorPanel(currentShape);
     });
-
-    canvas.addEventListener('mouseup', e => {
+    canvas.addEventListener("mouseup", () => {
       if (!isDrawing) return;
       isDrawing = false;
       if (currentShape) {
-        const shapeLeft = parseInt(currentShape.element.style.left);
-        const shapeTop = parseInt(currentShape.element.style.top);
-        let shapeW = parseInt(currentShape.element.style.width);
-        let shapeH = parseInt(currentShape.element.style.height);
-        if (shapeW < 0) {
-          currentShape.element.style.left = (shapeLeft + shapeW) + 'px';
-          currentShape.element.style.width = Math.abs(shapeW) + 'px';
-        }
-        if (shapeH < 0) {
-          currentShape.element.style.top = (shapeTop + shapeH) + 'px';
-          currentShape.element.style.height = Math.abs(shapeH) + 'px';
-        }
         addResizeHandle(currentShape.element);
         addRotateHandle(currentShape.element);
         currentShape = null;
       }
       reassignZIndices();
     });
-
-    // Привязка событий для кнопок входа/выхода
-    signinButton.onclick = handleSignInClick;
-    signoutButton.onclick = handleSignOutClick;
+    canvas.addEventListener("mousedown", e => {
+      if (e.target === canvas) {
+        selectedShape = null;
+        updateSelectionUI();
+        hideColorPanel();
+      }
+    });
+    /* Resize / Rotate ручки */
+    function addResizeHandle(el) {
+      if (el.querySelector(".resize-handle")) return;
+      const resize = document.createElement("div");
+      resize.classList.add("resize-handle");
+      el.appendChild(resize);
+      resize.addEventListener("mousedown", e => {
+        e.stopPropagation();
+        const initX = e.clientX;
+        const initY = e.clientY;
+        const initW = parseInt(el.style.width);
+        const initH = parseInt(el.style.height);
+        const left = parseInt(el.style.left);
+        const top = parseInt(el.style.top);
+        function mouseMove(ev) {
+          const dx = ev.clientX - initX;
+          const dy = ev.clientY - initY;
+          let newW = initW + dx;
+          let newH = initH + dy;
+          if (newW < 0) {
+            el.style.left = (left + newW) + "px";
+            newW = Math.abs(newW);
+          }
+          if (newH < 0) {
+            el.style.top = (top + newH) + "px";
+            newH = Math.abs(newH);
+          }
+          if (ev.shiftKey) {
+            const ratio = initW / initH || 1;
+            if (Math.abs(dx) > Math.abs(dy)) {
+              newH = newW / ratio;
+            } else {
+              newW = newH * ratio;
+            }
+          }
+          if (snapToGridCheckbox.checked) {
+            newW = snap(newW, GRID_SIZE);
+            newH = snap(newH, GRID_SIZE);
+          }
+          el.style.width = newW + "px";
+          el.style.height = newH + "px";
+          // Обновляем размеры в панели
+          const s = shapes.find(s => s.element === el);
+          if (s) {
+            cpWidth.value = newW;
+            cpHeight.value = newH;
+          }
+          showColorPanel(shapes.find(s => s.element === el));
+        }
+        function onMouseUp() {
+          document.removeEventListener("mousemove", mouseMove);
+          document.removeEventListener("mouseup", onMouseUp);
+        }
+        document.addEventListener("mousemove", mouseMove);
+        document.addEventListener("mouseup", onMouseUp);
+      });
+    }
+    function addRotateHandle(el) {
+      if (el.querySelector(".rotate-handle")) return;
+      const rotate = document.createElement("div");
+      rotate.classList.add("rotate-handle");
+      el.appendChild(rotate);
+      rotate.addEventListener("mousedown", e => {
+        e.stopPropagation();
+        const rect = canvas.getBoundingClientRect();
+        const centerX = el.offsetLeft + el.offsetWidth/2;
+        const centerY = el.offsetTop + el.offsetHeight/2;
+        const startAngle = getCurrentRotation(el);
+        function onMouseMove(ev) {
+          const mouseX = ev.clientX - rect.left;
+          const mouseY = ev.clientY - rect.top;
+          const dx = mouseX - centerX;
+          const dy = mouseY - centerY;
+          let angle = Math.atan2(dy, dx) * (180/Math.PI);
+          el.style.transform = `rotate(${angle}deg)`;
+          showColorPanel(shapes.find(s=>s.element===el));
+        }
+        function onMouseUp() {
+          document.removeEventListener("mousemove", onMouseMove);
+          document.removeEventListener("mouseup", onMouseUp);
+        }
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("mouseup", onMouseUp);
+      });
+    }
+    /* Undo / Redo */
+    undoButton.addEventListener("click", () => {
+      if (shapes.length > 0) {
+        const last = shapes.pop();
+        redoStack.push(last);
+        last.element.remove();
+        if (selectedShape && selectedShape.id === last.id) {
+          selectedShape = null;
+          hideColorPanel();
+        }
+        renderLayers();
+      }
+    });
+    redoButton.addEventListener("click", () => {
+      if (redoStack.length > 0) {
+        const shapeObj = redoStack.pop();
+        shapes.push(shapeObj);
+        canvas.appendChild(shapeObj.element);
+        if (shapeObj.type === "arrow") {
+          addArrowHandleEvents(shapeObj);
+          updateArrowUI(shapeObj);
+        }
+        reassignZIndices();
+      }
+    });
   </script>
 </body>
 </html>
->>>>>>> refs/remotes/origin/main
