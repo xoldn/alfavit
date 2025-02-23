@@ -9,6 +9,7 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
   <style>
+    /* Общие стили */
     * {
       box-sizing: border-box;
       margin: 0;
@@ -18,20 +19,18 @@
       font-family: Arial, sans-serif;
       background-color: #f2f2f2;
       display: flex;
-      flex-direction: row;
       height: 100vh;
     }
     .sidebar {
       width: 320px;
-      background-color: #ffffff;
+      background-color: #fff;
       border-right: 1px solid #ccc;
-      display: flex;
-      flex-direction: column;
       padding: 16px;
       overflow-y: auto;
+      display: flex;
+      flex-direction: column;
     }
     .sidebar h2 {
-      margin-top: 0;
       margin-bottom: 10px;
       font-size: 1.2rem;
     }
@@ -50,29 +49,25 @@
       font-weight: bold;
       font-size: 14px;
     }
-
     .toolbar {
       display: flex;
       gap: 8px;
       margin-bottom: 16px;
       flex-wrap: wrap;
-      justify-content: flex-start;
     }
-
-    /* Tools: pointer, rectangle, circle, arrow, text */
     .icon {
       width: 50px;
       height: 50px;
       background: #fafafa;
       border: 2px solid #666;
-      cursor: pointer;
       border-radius: 6px;
       display: flex;
       justify-content: center;
       align-items: center;
-      user-select: none;
+      cursor: pointer;
       transition: border-color 0.2s, transform 0.2s;
       font-size: 1.1rem;
+      user-select: none;
     }
     .icon:hover {
       transform: scale(1.05);
@@ -80,7 +75,6 @@
     .icon.active {
       border-color: #f00;
     }
-
     .icon.pointer::before {
       content: "🖱";
     }
@@ -113,7 +107,6 @@
       font-weight: bold;
       color: #666;
     }
-
     .canvas-container {
       flex: 1;
       display: flex;
@@ -121,7 +114,6 @@
       align-items: center;
       overflow: hidden;
     }
-
     .canvas {
       width: 900px;
       height: 600px;
@@ -129,8 +121,6 @@
       background-color: #fff;
       position: relative;
     }
-
-    /* shape styling */
     .shape {
       position: absolute;
       border-style: solid;
@@ -148,14 +138,12 @@
     .circle {
       border-radius: 50%;
     }
-
     .shape-text {
       min-width: 30px;
       min-height: 20px;
       white-space: pre-wrap;
       word-break: break-word;
     }
-
     .resize-handle {
       width: 10px;
       height: 10px;
@@ -176,11 +164,9 @@
       cursor: grab;
       border-radius: 50%;
     }
-
     .selected {
       outline: 2px dashed #06f;
     }
-
     .layers {
       flex: 1;
       overflow-y: auto;
@@ -189,7 +175,6 @@
       padding: 8px;
       margin-bottom: 10px;
     }
-
     .layer-item {
       padding: 6px 8px;
       margin: 4px 0;
@@ -209,22 +194,9 @@
       background: #d0ebff;
       outline: 1px solid #409eff;
     }
-
-    /* Hide arrow up/down for layers, we'll do drag reorder with animation */
-    .layer-controls {
-      display: none;
-    }
-
-    /* drag animation for layer items */
-    .layer-item.layer-moving {
-      background: #ffa;
-      transition: transform 0.3s;
-      transform: scale(1.05);
-    }
-
     #deleteShape {
       background: #f44336;
-      color: white;
+      color: #fff;
       border: none;
       padding: 6px 12px;
       cursor: pointer;
@@ -240,9 +212,7 @@
 <body>
   <div class="sidebar">
     <h2>Tools</h2>
-    <!-- Show version here -->
     <div id="appVersion">Version v1.0.2</div>
-
     <div class="toolbar">
       <div class="icon pointer active" data-shape="pointer" title="Pointer"></div>
       <div class="icon rectangle" data-shape="rectangle" title="Rectangle"></div>
@@ -285,11 +255,8 @@
       <button id="export">Export</button>
     </div>
     <button id="deleteShape">Delete Shape</button>
-
     <h3>Layers</h3>
     <div class="layers" id="layersList"></div>
-
-    <!-- Drive Controls -->
     <div class="form-group" id="driveControls">
       <label>Google Drive Integration</label>
       <button id="signin_button">Sign In</button>
@@ -302,14 +269,11 @@
     <div class="canvas"></div>
   </div>
 
+  <!-- Скрипт интеграции с Google Drive -->
   <script>
-    // =======================
-    // Google Identity Services (New)
-    // =======================
-
+    "use strict";
     const CLIENT_ID = "158627123477-4m4d7dqms8ndlmfq4mejhdguj1jte08m.apps.googleusercontent.com";
     const SCOPES = "https://www.googleapis.com/auth/drive.file";
-
     let accessToken = null;
     let tokenClient = null;
     let currentFileId = null;
@@ -336,9 +300,7 @@
           method: "POST",
           headers: { "Content-type": "application/x-www-form-urlencoded" }
         })
-          .then(() => {
-            console.log("Token revoked");
-          })
+          .then(() => console.log("Token revoked"))
           .catch(err => console.error(err));
       }
       accessToken = null;
@@ -355,9 +317,7 @@
       }
       try {
         const resp = await fetch("https://www.googleapis.com/drive/v3/files?pageSize=10&q=mimeType!='application/vnd.google-apps.folder'", {
-          headers: {
-            Authorization: `Bearer ${accessToken}`
-          }
+          headers: { Authorization: `Bearer ${accessToken}` }
         });
         const data = await resp.json();
         const fileListElem = document.getElementById('driveFileList');
@@ -366,10 +326,8 @@
           data.files.forEach(file => {
             const div = document.createElement('div');
             div.classList.add('drive-file');
-            div.textContent = file.name + ' (' + file.id + ')';
-            div.addEventListener('click', () => {
-              loadFromDrive(file.id);
-            });
+            div.textContent = `${file.name} (${file.id})`;
+            div.addEventListener('click', () => loadFromDrive(file.id));
             fileListElem.appendChild(div);
           });
         } else {
@@ -389,15 +347,13 @@
       }
       try {
         const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`
-          }
+          headers: { Authorization: `Bearer ${accessToken}` }
         });
         const fileContent = await resp.text();
+        // При загрузке содержимого файла может понадобиться повторная инициализация событий.
         document.querySelector('.canvas-container').innerHTML = fileContent;
         currentFileId = fileId;
         alert('File loaded from Drive.');
-        // re-init shape events if needed
       } catch (error) {
         console.error('Error loading file', error);
       }
@@ -419,19 +375,14 @@
       try {
         const contentHtml = document.querySelector('.canvas').outerHTML;
         const contentBlob = new Blob([contentHtml], { type: 'text/html' });
-        const metadata = {
-          name: 'drawing.html',
-          mimeType: 'text/html'
-        };
+        const metadata = { name: 'drawing.html', mimeType: 'text/html' };
         const form = new FormData();
         form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
         form.append('file', contentBlob);
 
         const resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
-          },
+          headers: { Authorization: `Bearer ${accessToken}` },
           body: form
         });
         const result = await resp.json();
@@ -446,20 +397,14 @@
       try {
         const contentHtml = document.querySelector('.canvas').outerHTML;
         const contentBlob = new Blob([contentHtml], { type: 'text/html' });
-        const metadata = {
-          name: 'drawing.html',
-          mimeType: 'text/html'
-        };
-
+        const metadata = { name: 'drawing.html', mimeType: 'text/html' };
         const form = new FormData();
         form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
         form.append('file', contentBlob);
 
         await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`, {
           method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
-          },
+          headers: { Authorization: `Bearer ${accessToken}` },
           body: form
         });
       } catch (error) {
@@ -468,754 +413,681 @@
     }
   </script>
 
+  <!-- Основной скрипт приложения рисования -->
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      document.getElementById('signin_button').onclick = handleSignInClick;
-      document.getElementById('signout_button').onclick = handleSignOutClick;
+    "use strict";
+    const canvas = document.querySelector(".canvas");
+    const layersList = document.querySelector("#layersList");
 
-      const canvas = document.querySelector(".canvas");
-      const layersList = document.querySelector("#layersList");
+    // Константы и начальные переменные
+    const GRID_SIZE = 20;
+    let selectedShapeType = "pointer";
+    let shapes = [];
+    let redoStack = [];
+    let isDrawing = false;
+    let startX = 0;
+    let startY = 0;
+    let currentShape = null;
+    let selectedShapes = new Set();
 
-      const colorPicker = document.querySelector("#colorPicker");
-      const fillOpacityRange = document.querySelector("#fillOpacityRange");
-      const borderColorPicker = document.querySelector("#borderColorPicker");
-      const borderOpacityRange = document.querySelector("#borderOpacityRange");
-      const borderWidthInput = document.querySelector("#borderWidth");
-      const snapToGridCheckbox = document.querySelector("#snapToGrid");
+    let selectedFillColor = "#ff0000";
+    let selectedFillOpacity = 1;
+    let selectedBorderColor = "#000000";
+    let selectedBorderOpacity = 1;
+    let selectedBorderWidth = 1;
 
-      const groupBtn = document.querySelector("#groupShapes");
-      const ungroupBtn = document.querySelector("#ungroupShapes");
-      const undoButton = document.querySelector("#undo");
-      const redoButton = document.querySelector("#redo");
-      const exportButton = document.querySelector("#export");
-      const shapeIcons = document.querySelectorAll(".icon");
-      const deleteButton = document.querySelector("#deleteShape");
+    // Элементы управления
+    const colorPicker = document.querySelector("#colorPicker");
+    const fillOpacityRange = document.querySelector("#fillOpacityRange");
+    const borderColorPicker = document.querySelector("#borderColorPicker");
+    const borderOpacityRange = document.querySelector("#borderOpacityRange");
+    const borderWidthInput = document.querySelector("#borderWidth");
+    const snapToGridCheckbox = document.querySelector("#snapToGrid");
+    const groupBtn = document.querySelector("#groupShapes");
+    const ungroupBtn = document.querySelector("#ungroupShapes");
+    const undoButton = document.querySelector("#undo");
+    const redoButton = document.querySelector("#redo");
+    const exportButton = document.querySelector("#export");
+    const shapeIcons = document.querySelectorAll(".icon");
+    const deleteButton = document.querySelector("#deleteShape");
+    const signinButton = document.getElementById("signin_button");
+    const signoutButton = document.getElementById("signout_button");
 
-      let selectedShapeType = "pointer";
-      let shapes = [];
-      let redoStack = [];
-      let isDrawing = false;
-      let startX = 0;
-      let startY = 0;
-      let currentShape = null;
-
-      let selectedFillColor = "#ff0000";
-      let selectedFillOpacity = 1;
-      let selectedBorderColor = "#000000";
-      let selectedBorderOpacity = 1;
-      let selectedBorderWidth = 1;
-
-      let selectedShapes = new Set();
-
-      setInterval(() => {
-        if (accessToken) {
-          saveToDrive();
-        }
-      }, 5000);
-
-      function generateId() {
-        return "id-" + Math.random().toString(36).substr(2, 9);
+    // Автоматическое сохранение каждые 5 секунд, если выполнена авторизация
+    setInterval(() => {
+      if (accessToken) {
+        saveToDrive();
       }
+    }, 5000);
 
-      function safeParseFloat(val, def = 1) {
-        const parsed = parseFloat(val);
-        return isNaN(parsed) ? def : parsed;
-      }
+    // Генерация уникального ID
+    function generateId() {
+      return "id-" + Math.random().toString(36).substr(2, 9);
+    }
 
-      function hexToRgb(hex) {
-        hex = hex.replace(/^#/, "");
-        if (hex.length === 3) {
-          const r = parseInt(hex[0] + hex[0], 16);
-          const g = parseInt(hex[1] + hex[1], 16);
-          const b = parseInt(hex[2] + hex[2], 16);
-          return { r, g, b };
-        } else if (hex.length === 6) {
-          const r = parseInt(hex.substring(0, 2), 16);
-          const g = parseInt(hex.substring(2, 4), 16);
-          const b = parseInt(hex.substring(4, 6), 16);
-          return { r, g, b };
-        }
-        return null;
-      }
+    // Парсинг числа
+    function safeParseFloat(val, def = 1) {
+      const parsed = parseFloat(val);
+      return isNaN(parsed) ? def : parsed;
+    }
 
-      function snap(value, gridSize) {
-        return Math.round(value / gridSize) * gridSize;
-      }
-
-      shapeIcons.forEach(icon => {
-        icon.addEventListener("click", () => {
-          shapeIcons.forEach(i => i.classList.remove("active"));
-          icon.classList.add("active");
-          selectedShapeType = icon.getAttribute("data-shape");
-        });
-      });
-
-      function renderLayers() {
-        layersList.innerHTML = "";
-        const sorted = [...shapes].sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0));
-        sorted.forEach(shape => {
-          const div = document.createElement("div");
-          div.classList.add("layer-item");
-          if (selectedShapes.has(shape.id)) {
-            div.classList.add("selected");
-          }
-          div.textContent = `${shape.type} (${shape.id})`;
-
-          div.draggable = true;
-          div.addEventListener("dragstart", e => {
-            e.dataTransfer.setData("text/plain", shape.id);
-            div.classList.add("layer-moving");
-          });
-
-          div.addEventListener("dragend", e => {
-            div.classList.remove("layer-moving");
-          });
-
-          div.addEventListener("dragover", e => {
-            e.preventDefault();
-          });
-
-          div.addEventListener("drop", e => {
-            e.preventDefault();
-            const draggedId = e.dataTransfer.getData("text/plain");
-            if (draggedId !== shape.id) {
-              reorderShapes(draggedId, shape.id);
-            }
-            div.classList.remove("layer-moving");
-          });
-
-          div.addEventListener("click", (e) => {
-            e.stopPropagation();
-            if (!e.shiftKey) {
-              selectedShapes.clear();
-            }
-            if (selectedShapes.has(shape.id)) {
-              selectedShapes.delete(shape.id);
-            } else {
-              selectedShapes.add(shape.id);
-            }
-            updateSelectionUI();
-            renderLayers();
-          });
-          layersList.appendChild(div);
-        });
-      }
-
-      function updateSelectionUI() {
-        shapes.forEach(s => s.element.classList.remove("selected"));
-        shapes.forEach(s => {
-          if (selectedShapes.has(s.id)) {
-            s.element.classList.add("selected");
-          }
-        });
-      }
-
-      function bringForward(id) {
-        const shapeObj = shapes.find(s => s.id === id);
-        if (!shapeObj) return;
-        shapeObj.zIndex++;
-        reassignZIndices();
-      }
-
-      function sendBackward(id) {
-        const shapeObj = shapes.find(s => s.id === id);
-        if (!shapeObj) return;
-        shapeObj.zIndex = Math.max(1, shapeObj.zIndex - 1);
-        reassignZIndices();
-      }
-
-      function reassignZIndices() {
-        shapes.sort((a, b) => (a.zIndex || 1) - (b.zIndex || 1));
-        shapes.forEach((s, i) => {
-          s.zIndex = i + 1;
-          s.element.style.zIndex = s.zIndex;
-        });
-        renderLayers();
-      }
-
-      function reorderShapes(draggedId, targetId) {
-        const draggedShape = shapes.find(s => s.id === draggedId);
-        const targetShape = shapes.find(s => s.id === targetId);
-        if (!draggedShape || !targetShape) return;
-        if (draggedShape.id === targetShape.id) return;
-        // swap zIndex with animation
-        const draggedEl = draggedShape.element;
-        const targetEl = targetShape.element;
-        draggedEl.classList.add("layer-moving");
-        targetEl.classList.add("layer-moving");
-        setTimeout(() => {
-          draggedEl.classList.remove("layer-moving");
-          targetEl.classList.remove("layer-moving");
-        }, 500);
-        const tempZ = draggedShape.zIndex;
-        draggedShape.zIndex = targetShape.zIndex;
-        targetShape.zIndex = tempZ;
-        reassignZIndices();
-      }
-
-      // ============ ARROW CREATION ============
-      function createArrowShape(e) {
-        const rect = canvas.getBoundingClientRect();
-        const startX = e.clientX - rect.left;
-        const startY = e.clientY - rect.top;
-        const arrowId = generateId();
-
-        const arrowEl = document.createElement('div');
-        arrowEl.classList.add('shape');
-        arrowEl.dataset.id = arrowId;
-        arrowEl.style.position = 'absolute';
-        arrowEl.style.border = '2px solid #000';
-        arrowEl.style.background = 'transparent';
-        arrowEl.style.width = '2px';
-        arrowEl.style.height = '2px';
-        arrowEl.style.left = startX + 'px';
-        arrowEl.style.top = startY + 'px';
-        arrowEl.style.zIndex = shapes.length + 1;
-
-        const arrowObj = {
-          id: arrowId,
-          element: arrowEl,
-          type: 'arrow',
-          zIndex: shapes.length + 1,
-          startX, startY,
-          endX: startX,
-          endY: startY
+    // Преобразование HEX в RGB
+    function hexToRgb(hex) {
+      hex = hex.replace(/^#/, "");
+      if (hex.length === 3) {
+        return {
+          r: parseInt(hex[0] + hex[0], 16),
+          g: parseInt(hex[1] + hex[1], 16),
+          b: parseInt(hex[2] + hex[2], 16)
         };
-        shapes.push(arrowObj);
-        canvas.appendChild(arrowEl);
-        selectedShapes.clear();
-        selectedShapes.add(arrowId);
-        updateSelectionUI();
-        renderLayers();
-
-        function mouseMove(ev) {
-          const nx = ev.clientX - rect.left;
-          const ny = ev.clientY - rect.top;
-          arrowObj.endX = nx;
-          arrowObj.endY = ny;
-
-          const dx = nx - startX;
-          const dy = ny - startY;
-          const length = Math.sqrt(dx*dx + dy*dy);
-          arrowEl.style.width = length + 'px';
-          arrowEl.style.height = '2px';
-          const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-          arrowEl.style.transform = `rotate(${angle}deg)`;
-        }
-
-        function mouseUp() {
-          document.removeEventListener('mousemove', mouseMove);
-          document.removeEventListener('mouseup', mouseUp);
-        }
-
-        document.addEventListener('mousemove', mouseMove);
-        document.addEventListener('mouseup', mouseUp);
-      }
-
-      // ============ TEXT CREATION ============
-      function createTextShape(e) {
-        if (selectedShapeType === 'pointer') {
-          return;
-        } else if (selectedShapeType === 'arrow') {
-          createArrowShape(e);
-          return;
-        }
-        const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const id = generateId();
-        const el = document.createElement('div');
-        el.classList.add('shape', 'shape-text');
-        el.style.left = x + 'px';
-        el.style.top = y + 'px';
-        // text transparent background/border
-        el.style.backgroundColor = 'transparent';
-        el.style.border = 'none';
-        el.style.zIndex = shapes.length + 1;
-        el.style.minWidth = '50px';
-        el.style.minHeight = '20px';
-        el.dataset.id = id;
-        el.contentEditable = 'true';
-        el.innerText = 'Your Text';
-        addShapeEventListeners(el);
-        canvas.appendChild(el);
-        const shapeObj = {
-          id,
-          element: el,
-          type: 'text',
-          zIndex: shapes.length + 1,
+      } else if (hex.length === 6) {
+        return {
+          r: parseInt(hex.substring(0, 2), 16),
+          g: parseInt(hex.substring(2, 4), 16),
+          b: parseInt(hex.substring(4, 6), 16)
         };
-        shapes.push(shapeObj);
-        selectedShapes.clear();
-        selectedShapes.add(id);
-        updateSelectionUI();
-        addResizeHandle(el);
-        addRotateHandle(el);
-        renderLayers();
       }
+      return null;
+    }
 
-      // ============ NON-TEXT/NON-ARROW CREATION ============
-      function createNewShape() {
-        if (selectedShapeType === 'pointer') {
-          return null;
-        }
-        if (selectedShapeType === 'arrow') {
-          return null;
-        }
-        const id = generateId();
-        const el = document.createElement('div');
-        el.classList.add('shape');
-        if (selectedShapeType === 'circle') {
-          el.classList.add('circle');
-        }
-        const fillRgb = hexToRgb(selectedFillColor) || { r: 0, g: 0, b: 0};
-        const borderRgb = hexToRgb(selectedBorderColor) || { r: 0, g: 0, b: 0};
-        el.style.backgroundColor = `rgba(${fillRgb.r}, ${fillRgb.g}, ${fillRgb.b}, ${selectedFillOpacity})`;
-        el.style.borderWidth = selectedBorderWidth + 'px';
-        el.style.borderColor = `rgba(${borderRgb.r}, ${borderRgb.g}, ${borderRgb.b}, ${selectedBorderOpacity})`;
-        el.style.left = startX + 'px';
-        el.style.top = startY + 'px';
-        el.style.width = '0px';
-        el.style.height = '0px';
-        el.dataset.id = id;
-        addShapeEventListeners(el);
+    // Функция привязки к сетке
+    function snap(value, gridSize) {
+      return Math.round(value / gridSize) * gridSize;
+    }
 
-        const shapeObj = {
-          id,
-          element: el,
-          type: selectedShapeType,
-          zIndex: shapes.length + 1,
-        };
-        shapes.push(shapeObj);
-        el.style.zIndex = shapeObj.zIndex;
-        return shapeObj;
-      }
-
-      function addShapeEventListeners(el) {
-        el.addEventListener('mousedown', shapeMouseDown);
-      }
-
-      function shapeMouseDown(e) {
-        if (isDrawing) return;
-        // pointer/arrow just select
-        if (selectedShapeType === 'pointer' || selectedShapeType === 'arrow') {
-          e.stopPropagation();
-          const shapeEl = e.currentTarget;
-          const shapeId = shapeEl.dataset.id;
-          if (!e.shiftKey) {
-            selectedShapes.clear();
-          }
-          if (!selectedShapes.has(shapeId)) {
-            selectedShapes.add(shapeId);
-          } else {
-            selectedShapes.delete(shapeId);
-          }
-          updateSelectionUI();
-          renderLayers();
-          return;
-        }
-        const shapeEl = e.currentTarget;
-        const shapeId = shapeEl.dataset.id;
-        e.stopPropagation();
-        if (!e.shiftKey && !selectedShapes.has(shapeId)) {
-          selectedShapes.clear();
-        }
-        if (!selectedShapes.has(shapeId)) {
-          selectedShapes.add(shapeId);
-        }
-        updateSelectionUI();
-        renderLayers();
-
-        let offsetX = e.offsetX;
-        let offsetY = e.offsetY;
-
-        function mouseMove(ev) {
-          const cRect = canvas.getBoundingClientRect();
-          let left = ev.clientX - cRect.left - offsetX;
-          let top = ev.clientY - cRect.top - offsetY;
-          if (snapToGridCheckbox.checked) {
-            left = snap(left, 20);
-            top = snap(top, 20);
-          }
-          selectedShapes.forEach(sId => {
-            const sObj = shapes.find(obj => obj.id === sId);
-            if (!sObj) return;
-            const dx = parseInt(sObj.element.style.left) - parseInt(shapeEl.style.left);
-            const dy = parseInt(sObj.element.style.top) - parseInt(shapeEl.style.top);
-            sObj.element.style.left = (left + dx) + 'px';
-            sObj.element.style.top = (top + dy) + 'px';
-          });
-        }
-
-        function mouseUp() {
-          document.removeEventListener('mousemove', mouseMove);
-          document.removeEventListener('mouseup', mouseUp);
-        }
-
-        document.addEventListener('mousemove', mouseMove);
-        document.addEventListener('mouseup', mouseUp);
-      }
-
-      function addResizeHandle(shapeEl) {
-        if (shapeEl.querySelector('.resize-handle')) return;
-        const resize = document.createElement('div');
-        resize.classList.add('resize-handle');
-        shapeEl.appendChild(resize);
-
-        resize.addEventListener('mousedown', e => {
-          e.stopPropagation();
-          let initialX = e.clientX;
-          let initialY = e.clientY;
-          let initialW = parseInt(shapeEl.style.width);
-          let initialH = parseInt(shapeEl.style.height);
-          let shapeLeft = parseInt(shapeEl.style.left);
-          let shapeTop = parseInt(shapeEl.style.top);
-
-          function onMouseMove(ev) {
-            const deltaX = ev.clientX - initialX;
-            const deltaY = ev.clientY - initialY;
-            let newWidth = initialW + deltaX;
-            let newHeight = initialH + deltaY;
-            if (newWidth < 0) {
-              shapeEl.style.left = (shapeLeft + newWidth) + 'px';
-              newWidth = Math.abs(newWidth);
-            }
-            if (newHeight < 0) {
-              shapeEl.style.top = (shapeTop + newHeight) + 'px';
-              newHeight = Math.abs(newHeight);
-            }
-            if (ev.shiftKey) {
-              const aspect = initialW / initialH || 1;
-              if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                newHeight = newWidth / aspect;
-              } else {
-                newWidth = newHeight * aspect;
-              }
-            }
-            if (snapToGridCheckbox.checked) {
-              newWidth = snap(newWidth, 20);
-              newHeight = snap(newHeight, 20);
-            }
-            shapeEl.style.width = newWidth + 'px';
-            shapeEl.style.height = newHeight + 'px';
-          }
-
-          function onMouseUp() {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-          }
-
-          document.addEventListener('mousemove', onMouseMove);
-          document.addEventListener('mouseup', onMouseUp);
-        });
-      }
-
-      function addRotateHandle(shapeEl) {
-        if (shapeEl.querySelector('.rotate-handle')) return;
-        const rotate = document.createElement('div');
-        rotate.classList.add('rotate-handle');
-        shapeEl.appendChild(rotate);
-
-        rotate.addEventListener('mousedown', e => {
-          e.stopPropagation();
-          const rect = canvas.getBoundingClientRect();
-          const centerX = shapeEl.offsetLeft + shapeEl.offsetWidth / 2;
-          const centerY = shapeEl.offsetTop + shapeEl.offsetHeight / 2;
-
-          function onMouseMove(ev) {
-            const mouseX = ev.clientX - rect.left;
-            const mouseY = ev.clientY - rect.top;
-            const dx = mouseX - centerX;
-            const dy = mouseY - centerY;
-            let angle = Math.atan2(dy, dx) * (180 / Math.PI);
-            shapeEl.style.transform = `translate(0,0) rotate(${angle}deg)`;
-          }
-
-          function onMouseUp() {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-          }
-
-          document.addEventListener('mousemove', onMouseMove);
-          document.addEventListener('mouseup', onMouseUp);
-        });
-      }
-
-      groupBtn.addEventListener('click', () => {
-        if (selectedShapes.size < 2) return;
-        const groupId = generateId();
-        const groupEl = document.createElement('div');
-        groupEl.classList.add('shape');
-        groupEl.dataset.id = groupId;
-        groupEl.dataset.isGroup = 'true';
-        groupEl.style.position = 'absolute';
-        groupEl.style.border = '2px dashed #444';
-        canvas.appendChild(groupEl);
-
-        let minX = Infinity;
-        let minY = Infinity;
-        let maxX = -Infinity;
-        let maxY = -Infinity;
-        const groupedShapes = [];
-        shapes.forEach(s => {
-          if (selectedShapes.has(s.id)) {
-            const el = s.element;
-            const x = parseInt(el.style.left);
-            const y = parseInt(el.style.top);
-            const w = parseInt(el.style.width) || el.offsetWidth;
-            const h = parseInt(el.style.height) || el.offsetHeight;
-            if (x < minX) minX = x;
-            if (y < minY) minY = y;
-            if (x + w > maxX) maxX = x + w;
-            if (y + h > maxY) maxY = y + h;
-            groupedShapes.push(s);
-          }
-        });
-        const groupWidth = maxX - minX;
-        const groupHeight = maxY - minY;
-        groupEl.style.left = `${minX}px`;
-        groupEl.style.top = `${minY}px`;
-        groupEl.style.width = `${groupWidth}px`;
-        groupEl.style.height = `${groupHeight}px`;
-
-        groupedShapes.forEach(s => {
-          const el = s.element;
-          const shapeLeft = parseInt(el.style.left) - minX;
-          const shapeTop = parseInt(el.style.top) - minY;
-          el.style.left = shapeLeft + 'px';
-          el.style.top = shapeTop + 'px';
-          groupEl.appendChild(el);
-        });
-
-        shapes = shapes.filter(s => !selectedShapes.has(s.id));
-        const groupObj = {
-          id: groupId,
-          element: groupEl,
-          type: 'group',
-          zIndex: shapes.length + 1,
-        };
-        shapes.push(groupObj);
-        groupEl.style.zIndex = groupObj.zIndex;
-        selectedShapes.clear();
-        selectedShapes.add(groupId);
-        updateSelectionUI();
-        renderLayers();
-      });
-
-      ungroupBtn.addEventListener('click', () => {
-        if (selectedShapes.size !== 1) return;
-        const id = [...selectedShapes][0];
-        const shapeObj = shapes.find(s => s.id === id);
-        if (!shapeObj || shapeObj.type !== 'group') return;
-        const groupEl = shapeObj.element;
-        while (groupEl.firstChild) {
-          const child = groupEl.firstChild;
-          if (child.classList && child.classList.contains('shape')) {
-            const offsetLeft = parseInt(groupEl.style.left);
-            const offsetTop = parseInt(groupEl.style.top);
-            const childLeft = parseInt(child.style.left) + offsetLeft;
-            const childTop = parseInt(child.style.top) + offsetTop;
-            child.style.left = childLeft + 'px';
-            child.style.top = childTop + 'px';
-            canvas.appendChild(child);
-            const childId = child.dataset.id;
-            const cShape = shapes.find(x => x.id === childId);
-            if (!cShape) {
-              shapes.push({
-                id: childId,
-                element: child,
-                type: child.classList.contains('circle') ? 'circle' : child.classList.contains('shape-text') ? 'text' : 'rectangle',
-                zIndex: shapes.length + 1,
-              });
-              child.style.zIndex = shapes.length;
-            } else {
-              cShape.zIndex = shapes.length + 1;
-              child.style.zIndex = cShape.zIndex;
-            }
-          } else {
-            groupEl.removeChild(child);
-          }
-        }
-        shapes = shapes.filter(s => s.id !== id);
-        groupEl.remove();
-        selectedShapes.clear();
-        renderLayers();
-      });
-
-      undoButton.addEventListener('click', () => {
-        if (shapes.length > 0) {
-          const last = shapes.pop();
-          redoStack.push(last);
-          last.element.remove();
-          if (selectedShapes.has(last.id)) {
-            selectedShapes.delete(last.id);
-          }
-          renderLayers();
-        }
-      });
-
-      redoButton.addEventListener('click', () => {
-        if (redoStack.length > 0) {
-          const shapeObj = redoStack.pop();
-          shapes.push(shapeObj);
-          canvas.appendChild(shapeObj.element);
-          reassignZIndices();
-        }
-      });
-
-      exportButton.addEventListener('click', () => {
-        const data = `<html>\n<body>\n${canvas.outerHTML}\n</body>\n</html>`;
-        const blob = new Blob([data], { type: 'text/html' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'drawing.html';
-        a.click();
-      });
-
-      deleteButton.addEventListener('click', () => {
-        if (selectedShapes.size < 1) return;
-        selectedShapes.forEach(sId => {
-          const shapeObj = shapes.find(s => s.id === sId);
-          if (shapeObj) {
-            shapeObj.element.remove();
-            shapes = shapes.filter(s => s.id !== sId);
-          }
-        });
-        selectedShapes.clear();
-        renderLayers();
-      });
-
-      colorPicker.addEventListener('input', e => {
-        selectedFillColor = e.target.value;
-        selectedShapes.forEach(sId => {
-          const sObj = shapes.find(obj => obj.id === sId);
-          if (sObj && sObj.type !== 'group' && sObj.type !== 'arrow') {
-            const rgb = hexToRgb(selectedFillColor) || { r:0, g:0, b:0};
-            sObj.element.style.backgroundColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedFillOpacity})`;
-          }
-        });
-      });
-
-      fillOpacityRange.addEventListener('input', e => {
-        selectedFillOpacity = safeParseFloat(e.target.value, 1);
-        selectedShapes.forEach(sId => {
-          const sObj = shapes.find(obj => obj.id === sId);
-          if (sObj && sObj.type !== 'group' && sObj.type !== 'arrow') {
-            const fillRgb = hexToRgb(selectedFillColor) || {r:0,g:0,b:0};
-            sObj.element.style.backgroundColor = `rgba(${fillRgb.r}, ${fillRgb.g}, ${fillRgb.b}, ${selectedFillOpacity})`;
-          }
-        });
-      });
-
-      borderColorPicker.addEventListener('input', e => {
-        selectedBorderColor = e.target.value;
-        selectedShapes.forEach(sId => {
-          const sObj = shapes.find(obj => obj.id === sId);
-          if (sObj && sObj.type !== 'group') {
-            if (sObj.type === 'arrow') {
-              sObj.element.style.border = `2px solid ${selectedBorderColor}`;
-            } else {
-              const rgb = hexToRgb(selectedBorderColor) || {r:0,g:0,b:0};
-              sObj.element.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
-            }
-          }
-        });
-      });
-
-      borderOpacityRange.addEventListener('input', e => {
-        selectedBorderOpacity = safeParseFloat(e.target.value, 1);
-        selectedShapes.forEach(sId => {
-          const sObj = shapes.find(obj => obj.id === sId);
-          if (sObj && sObj.type !== 'group') {
-            if (sObj.type === 'arrow') {
-              // arrow is just border color
-              const rgb = hexToRgb(selectedBorderColor) || {r:0,g:0,b:0};
-              sObj.element.style.border = `${selectedBorderWidth}px solid rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
-            } else {
-              const rgb = hexToRgb(selectedBorderColor) || {r:0,g:0,b:0};
-              sObj.element.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
-            }
-          }
-        });
-      });
-
-      borderWidthInput.addEventListener('input', e => {
-        selectedBorderWidth = parseInt(e.target.value);
-        selectedShapes.forEach(sId => {
-          const sObj = shapes.find(obj => obj.id === sId);
-          if (sObj && sObj.type !== 'group') {
-            if (sObj.type === 'arrow') {
-              const rgb = hexToRgb(selectedBorderColor) || {r:0,g:0,b:0};
-              sObj.element.style.border = `${selectedBorderWidth}px solid rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
-            } else {
-              sObj.element.style.borderWidth = selectedBorderWidth + 'px';
-            }
-          }
-        });
-      });
-
-      canvas.addEventListener('mousedown', e => {
-        if (selectedShapeType === 'pointer') {
-          return;
-        } else if (selectedShapeType === 'arrow') {
-          createArrowShape(e);
-          return;
-        } else if (selectedShapeType === 'text') {
-          createTextShape(e);
-          return;
-        }
-        const rect = canvas.getBoundingClientRect();
-        startX = e.clientX - rect.left;
-        startY = e.clientY - rect.top;
-        isDrawing = true;
-        currentShape = createNewShape();
-        if (currentShape) {
-          canvas.appendChild(currentShape.element);
-          selectedShapes.clear();
-          selectedShapes.add(currentShape.id);
-          updateSelectionUI();
-        }
-      });
-
-      canvas.addEventListener('mousemove', e => {
-        if (!isDrawing || !currentShape) return;
-        const rect = canvas.getBoundingClientRect();
-        let width = (e.clientX - rect.left) - parseInt(currentShape.element.style.left);
-        let height = (e.clientY - rect.top) - parseInt(currentShape.element.style.top);
-        if (snapToGridCheckbox.checked) {
-          width = snap(width, 20);
-          height = snap(height, 20);
-        }
-        currentShape.element.style.width = width + 'px';
-        currentShape.element.style.height = height + 'px';
-        if (currentShape.type === 'circle') {
-          currentShape.element.style.borderRadius = '50%';
-        }
-      });
-
-      canvas.addEventListener('mouseup', e => {
-        if (!isDrawing) return;
-        isDrawing = false;
-        if (currentShape) {
-          const shapeLeft = parseInt(currentShape.element.style.left);
-          const shapeTop = parseInt(currentShape.element.style.top);
-          let shapeW = parseInt(currentShape.element.style.width);
-          let shapeH = parseInt(currentShape.element.style.height);
-          if (shapeW < 0) {
-            currentShape.element.style.left = (shapeLeft + shapeW) + 'px';
-            currentShape.element.style.width = Math.abs(shapeW) + 'px';
-          }
-          if (shapeH < 0) {
-            currentShape.element.style.top = (shapeTop + shapeH) + 'px';
-            currentShape.element.style.height = Math.abs(shapeH) + 'px';
-          }
-          addResizeHandle(currentShape.element);
-          addRotateHandle(currentShape.element);
-          currentShape = null;
-        }
-        reassignZIndices();
+    // Обработчики переключения инструментов
+    shapeIcons.forEach(icon => {
+      icon.addEventListener("click", () => {
+        shapeIcons.forEach(i => i.classList.remove("active"));
+        icon.classList.add("active");
+        selectedShapeType = icon.getAttribute("data-shape");
       });
     });
+
+    // Обновление списка слоёв
+    function renderLayers() {
+      layersList.innerHTML = "";
+      const sorted = [...shapes].sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0));
+      sorted.forEach(shape => {
+        const div = document.createElement("div");
+        div.classList.add("layer-item");
+        if (selectedShapes.has(shape.id)) {
+          div.classList.add("selected");
+        }
+        div.textContent = `${shape.type} (${shape.id})`;
+        div.draggable = true;
+        div.addEventListener("dragstart", e => {
+          e.dataTransfer.setData("text/plain", shape.id);
+          div.classList.add("layer-moving");
+        });
+        div.addEventListener("dragend", () => div.classList.remove("layer-moving"));
+        div.addEventListener("dragover", e => e.preventDefault());
+        div.addEventListener("drop", e => {
+          e.preventDefault();
+          const draggedId = e.dataTransfer.getData("text/plain");
+          if (draggedId !== shape.id) {
+            reorderShapes(draggedId, shape.id);
+          }
+          div.classList.remove("layer-moving");
+        });
+        div.addEventListener("click", e => {
+          e.stopPropagation();
+          if (!e.shiftKey) selectedShapes.clear();
+          selectedShapes.has(shape.id) ? selectedShapes.delete(shape.id) : selectedShapes.add(shape.id);
+          updateSelectionUI();
+          renderLayers();
+        });
+        layersList.appendChild(div);
+      });
+    }
+
+    // Подсветка выбранных фигур
+    function updateSelectionUI() {
+      shapes.forEach(s => s.element.classList.remove("selected"));
+      shapes.forEach(s => {
+        if (selectedShapes.has(s.id)) s.element.classList.add("selected");
+      });
+    }
+
+    // Переназначение z-index для фигур
+    function reassignZIndices() {
+      shapes.sort((a, b) => (a.zIndex || 1) - (b.zIndex || 1));
+      shapes.forEach((s, i) => {
+        s.zIndex = i + 1;
+        s.element.style.zIndex = s.zIndex;
+      });
+      renderLayers();
+    }
+
+    // Перестановка фигур (при перетаскивании в списке слоёв)
+    function reorderShapes(draggedId, targetId) {
+      const draggedShape = shapes.find(s => s.id === draggedId);
+      const targetShape = shapes.find(s => s.id === targetId);
+      if (!draggedShape || !targetShape || draggedShape.id === targetShape.id) return;
+      // Анимация при смене порядка
+      draggedShape.element.classList.add("layer-moving");
+      targetShape.element.classList.add("layer-moving");
+      setTimeout(() => {
+        draggedShape.element.classList.remove("layer-moving");
+        targetShape.element.classList.remove("layer-moving");
+      }, 500);
+      const tempZ = draggedShape.zIndex;
+      draggedShape.zIndex = targetShape.zIndex;
+      targetShape.zIndex = tempZ;
+      reassignZIndices();
+    }
+
+    // Создание стрелки
+    function createArrowShape(e) {
+      const rect = canvas.getBoundingClientRect();
+      const startX = e.clientX - rect.left;
+      const startY = e.clientY - rect.top;
+      const arrowId = generateId();
+
+      const arrowEl = document.createElement('div');
+      arrowEl.classList.add('shape');
+      arrowEl.dataset.id = arrowId;
+      arrowEl.style.position = 'absolute';
+      arrowEl.style.border = '2px solid ' + selectedBorderColor;
+      arrowEl.style.background = 'transparent';
+      arrowEl.style.width = '2px';
+      arrowEl.style.height = '2px';
+      arrowEl.style.left = startX + 'px';
+      arrowEl.style.top = startY + 'px';
+      arrowEl.style.zIndex = shapes.length + 1;
+
+      const arrowObj = {
+        id: arrowId,
+        element: arrowEl,
+        type: 'arrow',
+        zIndex: shapes.length + 1,
+        startX, startY,
+        endX: startX,
+        endY: startY
+      };
+      shapes.push(arrowObj);
+      canvas.appendChild(arrowEl);
+      selectedShapes.clear();
+      selectedShapes.add(arrowId);
+      updateSelectionUI();
+      renderLayers();
+
+      function mouseMove(ev) {
+        const nx = ev.clientX - rect.left;
+        const ny = ev.clientY - rect.top;
+        arrowObj.endX = nx;
+        arrowObj.endY = ny;
+        const dx = nx - startX;
+        const dy = ny - startY;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        arrowEl.style.width = length + 'px';
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+        arrowEl.style.transform = `rotate(${angle}deg)`;
+      }
+      function mouseUp() {
+        document.removeEventListener('mousemove', mouseMove);
+        document.removeEventListener('mouseup', mouseUp);
+      }
+      document.addEventListener('mousemove', mouseMove);
+      document.addEventListener('mouseup', mouseUp);
+    }
+
+    // Создание текстовой фигуры
+    function createTextShape(e) {
+      if (selectedShapeType === 'pointer') return;
+      if (selectedShapeType === 'arrow') {
+        createArrowShape(e);
+        return;
+      }
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const id = generateId();
+      const el = document.createElement('div');
+      el.classList.add('shape', 'shape-text');
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      el.style.backgroundColor = 'transparent';
+      el.style.border = 'none';
+      el.style.zIndex = shapes.length + 1;
+      el.style.minWidth = '50px';
+      el.style.minHeight = '20px';
+      el.dataset.id = id;
+      el.contentEditable = 'true';
+      el.innerText = 'Your Text';
+      addShapeEventListeners(el);
+      canvas.appendChild(el);
+      const shapeObj = { id, element: el, type: 'text', zIndex: shapes.length + 1 };
+      shapes.push(shapeObj);
+      selectedShapes.clear();
+      selectedShapes.add(id);
+      updateSelectionUI();
+      addResizeHandle(el);
+      addRotateHandle(el);
+      renderLayers();
+    }
+
+    // Создание фигур (прямоугольник, круг)
+    function createNewShape() {
+      if (selectedShapeType === 'pointer' || selectedShapeType === 'arrow') return null;
+      const id = generateId();
+      const el = document.createElement('div');
+      el.classList.add('shape');
+      if (selectedShapeType === 'circle') el.classList.add('circle');
+      const fillRgb = hexToRgb(selectedFillColor) || { r: 0, g: 0, b: 0 };
+      const borderRgb = hexToRgb(selectedBorderColor) || { r: 0, g: 0, b: 0 };
+      el.style.backgroundColor = `rgba(${fillRgb.r}, ${fillRgb.g}, ${fillRgb.b}, ${selectedFillOpacity})`;
+      el.style.borderWidth = selectedBorderWidth + 'px';
+      el.style.borderColor = `rgba(${borderRgb.r}, ${borderRgb.g}, ${borderRgb.b}, ${selectedBorderOpacity})`;
+      el.style.left = startX + 'px';
+      el.style.top = startY + 'px';
+      el.style.width = '0px';
+      el.style.height = '0px';
+      el.dataset.id = id;
+      addShapeEventListeners(el);
+
+      const shapeObj = { id, element: el, type: selectedShapeType, zIndex: shapes.length + 1 };
+      shapes.push(shapeObj);
+      el.style.zIndex = shapeObj.zIndex;
+      return shapeObj;
+    }
+
+    function addShapeEventListeners(el) {
+      el.addEventListener('mousedown', shapeMouseDown);
+    }
+
+    function shapeMouseDown(e) {
+      // Если выбран инструмент pointer или arrow – просто выбираем фигуру
+      if (selectedShapeType === 'pointer' || selectedShapeType === 'arrow') {
+        e.stopPropagation();
+        const shapeEl = e.currentTarget;
+        const shapeId = shapeEl.dataset.id;
+        if (!e.shiftKey) selectedShapes.clear();
+        selectedShapes.has(shapeId) ? selectedShapes.delete(shapeId) : selectedShapes.add(shapeId);
+        updateSelectionUI();
+        renderLayers();
+        return;
+      }
+      // Выбираем фигуру и перемещаем её
+      const shapeEl = e.currentTarget;
+      const shapeId = shapeEl.dataset.id;
+      e.stopPropagation();
+      if (!e.shiftKey) selectedShapes.clear();
+      selectedShapes.add(shapeId);
+      updateSelectionUI();
+      renderLayers();
+      const offsetX = e.offsetX;
+      const offsetY = e.offsetY;
+      function mouseMove(ev) {
+        const cRect = canvas.getBoundingClientRect();
+        let left = ev.clientX - cRect.left - offsetX;
+        let top = ev.clientY - cRect.top - offsetY;
+        if (snapToGridCheckbox.checked) {
+          left = snap(left, GRID_SIZE);
+          top = snap(top, GRID_SIZE);
+        }
+        selectedShapes.forEach(sId => {
+          const sObj = shapes.find(obj => obj.id === sId);
+          if (!sObj) return;
+          const dx = parseInt(sObj.element.style.left) - parseInt(shapeEl.style.left);
+          const dy = parseInt(sObj.element.style.top) - parseInt(shapeEl.style.top);
+          sObj.element.style.left = (left + dx) + 'px';
+          sObj.element.style.top = (top + dy) + 'px';
+        });
+      }
+      function mouseUp() {
+        document.removeEventListener('mousemove', mouseMove);
+        document.removeEventListener('mouseup', mouseUp);
+      }
+      document.addEventListener('mousemove', mouseMove);
+      document.addEventListener('mouseup', mouseUp);
+    }
+
+    // Добавление ручки изменения размера
+    function addResizeHandle(shapeEl) {
+      if (shapeEl.querySelector('.resize-handle')) return;
+      const resize = document.createElement('div');
+      resize.classList.add('resize-handle');
+      shapeEl.appendChild(resize);
+      resize.addEventListener('mousedown', e => {
+        e.stopPropagation();
+        const initialX = e.clientX;
+        const initialY = e.clientY;
+        const initialW = parseInt(shapeEl.style.width);
+        const initialH = parseInt(shapeEl.style.height);
+        const shapeLeft = parseInt(shapeEl.style.left);
+        const shapeTop = parseInt(shapeEl.style.top);
+        function onMouseMove(ev) {
+          const deltaX = ev.clientX - initialX;
+          const deltaY = ev.clientY - initialY;
+          let newWidth = initialW + deltaX;
+          let newHeight = initialH + deltaY;
+          if (newWidth < 0) {
+            shapeEl.style.left = (shapeLeft + newWidth) + 'px';
+            newWidth = Math.abs(newWidth);
+          }
+          if (newHeight < 0) {
+            shapeEl.style.top = (shapeTop + newHeight) + 'px';
+            newHeight = Math.abs(newHeight);
+          }
+          if (ev.shiftKey) {
+            const aspect = initialW / initialH || 1;
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+              newHeight = newWidth / aspect;
+            } else {
+              newWidth = newHeight * aspect;
+            }
+          }
+          if (snapToGridCheckbox.checked) {
+            newWidth = snap(newWidth, GRID_SIZE);
+            newHeight = snap(newHeight, GRID_SIZE);
+          }
+          shapeEl.style.width = newWidth + 'px';
+          shapeEl.style.height = newHeight + 'px';
+        }
+        function onMouseUp() {
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+        }
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+    }
+
+    // Добавление ручки поворота
+    function addRotateHandle(shapeEl) {
+      if (shapeEl.querySelector('.rotate-handle')) return;
+      const rotate = document.createElement('div');
+      rotate.classList.add('rotate-handle');
+      shapeEl.appendChild(rotate);
+      rotate.addEventListener('mousedown', e => {
+        e.stopPropagation();
+        const rect = canvas.getBoundingClientRect();
+        const centerX = shapeEl.offsetLeft + shapeEl.offsetWidth / 2;
+        const centerY = shapeEl.offsetTop + shapeEl.offsetHeight / 2;
+        function onMouseMove(ev) {
+          const mouseX = ev.clientX - rect.left;
+          const mouseY = ev.clientY - rect.top;
+          const dx = mouseX - centerX;
+          const dy = mouseY - centerY;
+          const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+          shapeEl.style.transform = `rotate(${angle}deg)`;
+        }
+        function onMouseUp() {
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+        }
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+    }
+
+    // Группировка выбранных фигур с использованием getBoundingClientRect
+    groupBtn.addEventListener('click', () => {
+      if (selectedShapes.size < 2) return;
+      const groupId = generateId();
+      const groupEl = document.createElement('div');
+      groupEl.classList.add('shape');
+      groupEl.dataset.id = groupId;
+      groupEl.dataset.isGroup = 'true';
+      groupEl.style.position = 'absolute';
+      groupEl.style.border = '2px dashed #444';
+      canvas.appendChild(groupEl);
+
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      const groupedShapes = [];
+      const canvasRect = canvas.getBoundingClientRect();
+      selectedShapes.forEach(sId => {
+        const sObj = shapes.find(s => s.id === sId);
+        if (!sObj) return;
+        const rect = sObj.element.getBoundingClientRect();
+        const offsetLeft = rect.left - canvasRect.left;
+        const offsetTop = rect.top - canvasRect.top;
+        minX = Math.min(minX, offsetLeft);
+        minY = Math.min(minY, offsetTop);
+        maxX = Math.max(maxX, offsetLeft + rect.width);
+        maxY = Math.max(maxY, offsetTop + rect.height);
+        groupedShapes.push(sObj);
+      });
+      groupEl.style.left = `${minX}px`;
+      groupEl.style.top = `${minY}px`;
+      groupEl.style.width = `${maxX - minX}px`;
+      groupEl.style.height = `${maxY - minY}px`;
+
+      groupedShapes.forEach(sObj => {
+        const rect = sObj.element.getBoundingClientRect();
+        const offsetLeft = rect.left - canvasRect.left;
+        const offsetTop = rect.top - canvasRect.top;
+        sObj.element.style.left = (offsetLeft - minX) + 'px';
+        sObj.element.style.top = (offsetTop - minY) + 'px';
+        groupEl.appendChild(sObj.element);
+      });
+      shapes = shapes.filter(s => !selectedShapes.has(s.id));
+      const groupObj = { id: groupId, element: groupEl, type: 'group', zIndex: shapes.length + 1 };
+      shapes.push(groupObj);
+      groupEl.style.zIndex = groupObj.zIndex;
+      selectedShapes.clear();
+      selectedShapes.add(groupId);
+      updateSelectionUI();
+      renderLayers();
+    });
+
+    // Разгруппировка
+    ungroupBtn.addEventListener('click', () => {
+      if (selectedShapes.size !== 1) return;
+      const id = [...selectedShapes][0];
+      const groupObj = shapes.find(s => s.id === id);
+      if (!groupObj || groupObj.type !== 'group') return;
+      const groupEl = groupObj.element;
+      const canvasRect = canvas.getBoundingClientRect();
+      while (groupEl.firstChild) {
+        const child = groupEl.firstChild;
+        if (child.classList && child.classList.contains('shape')) {
+          const childRect = child.getBoundingClientRect();
+          const offsetLeft = childRect.left - canvasRect.left;
+          const offsetTop = childRect.top - canvasRect.top;
+          child.style.left = offsetLeft + 'px';
+          child.style.top = offsetTop + 'px';
+          canvas.appendChild(child);
+          const childId = child.dataset.id;
+          let cShape = shapes.find(x => x.id === childId);
+          if (!cShape) {
+            cShape = { id: childId, element: child, type: child.classList.contains('circle') ? 'circle' : child.classList.contains('shape-text') ? 'text' : 'rectangle', zIndex: shapes.length + 1 };
+            shapes.push(cShape);
+            child.style.zIndex = cShape.zIndex;
+          } else {
+            cShape.zIndex = shapes.length + 1;
+            child.style.zIndex = cShape.zIndex;
+          }
+        } else {
+          groupEl.removeChild(child);
+        }
+      }
+      shapes = shapes.filter(s => s.id !== id);
+      groupEl.remove();
+      selectedShapes.clear();
+      renderLayers();
+    });
+
+    // Undo и Redo
+    undoButton.addEventListener('click', () => {
+      if (shapes.length > 0) {
+        const last = shapes.pop();
+        redoStack.push(last);
+        last.element.remove();
+        selectedShapes.delete(last.id);
+        renderLayers();
+      }
+    });
+
+    redoButton.addEventListener('click', () => {
+      if (redoStack.length > 0) {
+        const shapeObj = redoStack.pop();
+        shapes.push(shapeObj);
+        canvas.appendChild(shapeObj.element);
+        reassignZIndices();
+      }
+    });
+
+    // Экспорт
+    exportButton.addEventListener('click', () => {
+      const data = `<html>\n<body>\n${canvas.outerHTML}\n</body>\n</html>`;
+      const blob = new Blob([data], { type: 'text/html' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'drawing.html';
+      a.click();
+    });
+
+    // Удаление фигур
+    deleteButton.addEventListener('click', () => {
+      if (selectedShapes.size < 1) return;
+      selectedShapes.forEach(sId => {
+        const sObj = shapes.find(s => s.id === sId);
+        if (sObj) {
+          sObj.element.remove();
+          shapes = shapes.filter(s => s.id !== sId);
+        }
+      });
+      selectedShapes.clear();
+      renderLayers();
+    });
+
+    // Обновление стилей при изменении цвета и параметров границы
+    colorPicker.addEventListener('input', e => {
+      selectedFillColor = e.target.value;
+      selectedShapes.forEach(sId => {
+        const sObj = shapes.find(s => s.id === sId);
+        if (sObj && sObj.type !== 'group' && sObj.type !== 'arrow') {
+          const rgb = hexToRgb(selectedFillColor) || { r: 0, g: 0, b: 0 };
+          sObj.element.style.backgroundColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedFillOpacity})`;
+        }
+      });
+    });
+
+    fillOpacityRange.addEventListener('input', e => {
+      selectedFillOpacity = safeParseFloat(e.target.value, 1);
+      selectedShapes.forEach(sId => {
+        const sObj = shapes.find(s => s.id === sId);
+        if (sObj && sObj.type !== 'group' && sObj.type !== 'arrow') {
+          const fillRgb = hexToRgb(selectedFillColor) || { r: 0, g: 0, b: 0 };
+          sObj.element.style.backgroundColor = `rgba(${fillRgb.r}, ${fillRgb.g}, ${fillRgb.b}, ${selectedFillOpacity})`;
+        }
+      });
+    });
+
+    borderColorPicker.addEventListener('input', e => {
+      selectedBorderColor = e.target.value;
+      selectedShapes.forEach(sId => {
+        const sObj = shapes.find(s => s.id === sId);
+        if (sObj && sObj.type !== 'group') {
+          if (sObj.type === 'arrow') {
+            sObj.element.style.border = `2px solid ${selectedBorderColor}`;
+          } else {
+            const rgb = hexToRgb(selectedBorderColor) || { r: 0, g: 0, b: 0 };
+            sObj.element.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
+          }
+        }
+      });
+    });
+
+    borderOpacityRange.addEventListener('input', e => {
+      selectedBorderOpacity = safeParseFloat(e.target.value, 1);
+      selectedShapes.forEach(sId => {
+        const sObj = shapes.find(s => s.id === sId);
+        if (sObj && sObj.type !== 'group') {
+          if (sObj.type === 'arrow') {
+            const rgb = hexToRgb(selectedBorderColor) || { r: 0, g: 0, b: 0 };
+            sObj.element.style.border = `${selectedBorderWidth}px solid rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
+          } else {
+            const rgb = hexToRgb(selectedBorderColor) || { r: 0, g: 0, b: 0 };
+            sObj.element.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
+          }
+        }
+      });
+    });
+
+    borderWidthInput.addEventListener('input', e => {
+      selectedBorderWidth = parseInt(e.target.value);
+      selectedShapes.forEach(sId => {
+        const sObj = shapes.find(s => s.id === sId);
+        if (sObj && sObj.type !== 'group') {
+          if (sObj.type === 'arrow') {
+            const rgb = hexToRgb(selectedBorderColor) || { r: 0, g: 0, b: 0 };
+            sObj.element.style.border = `${selectedBorderWidth}px solid rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
+          } else {
+            sObj.element.style.borderWidth = selectedBorderWidth + 'px';
+          }
+        }
+      });
+    });
+
+    // Обработчики событий на холсте
+    canvas.addEventListener('mousedown', e => {
+      if (selectedShapeType === 'pointer') return;
+      if (selectedShapeType === 'arrow') {
+        createArrowShape(e);
+        return;
+      }
+      if (selectedShapeType === 'text') {
+        createTextShape(e);
+        return;
+      }
+      const rect = canvas.getBoundingClientRect();
+      startX = e.clientX - rect.left;
+      startY = e.clientY - rect.top;
+      isDrawing = true;
+      currentShape = createNewShape();
+      if (currentShape) {
+        canvas.appendChild(currentShape.element);
+        selectedShapes.clear();
+        selectedShapes.add(currentShape.id);
+        updateSelectionUI();
+      }
+    });
+
+    canvas.addEventListener('mousemove', e => {
+      if (!isDrawing || !currentShape) return;
+      const rect = canvas.getBoundingClientRect();
+      let width = (e.clientX - rect.left) - parseInt(currentShape.element.style.left);
+      let height = (e.clientY - rect.top) - parseInt(currentShape.element.style.top);
+      if (snapToGridCheckbox.checked) {
+        width = snap(width, GRID_SIZE);
+        height = snap(height, GRID_SIZE);
+      }
+      currentShape.element.style.width = width + 'px';
+      currentShape.element.style.height = height + 'px';
+      if (currentShape.type === 'circle') {
+        currentShape.element.style.borderRadius = '50%';
+      }
+    });
+
+    canvas.addEventListener('mouseup', e => {
+      if (!isDrawing) return;
+      isDrawing = false;
+      if (currentShape) {
+        const shapeLeft = parseInt(currentShape.element.style.left);
+        const shapeTop = parseInt(currentShape.element.style.top);
+        let shapeW = parseInt(currentShape.element.style.width);
+        let shapeH = parseInt(currentShape.element.style.height);
+        if (shapeW < 0) {
+          currentShape.element.style.left = (shapeLeft + shapeW) + 'px';
+          currentShape.element.style.width = Math.abs(shapeW) + 'px';
+        }
+        if (shapeH < 0) {
+          currentShape.element.style.top = (shapeTop + shapeH) + 'px';
+          currentShape.element.style.height = Math.abs(shapeH) + 'px';
+        }
+        addResizeHandle(currentShape.element);
+        addRotateHandle(currentShape.element);
+        currentShape = null;
+      }
+      reassignZIndices();
+    });
+
+    // Привязка событий для кнопок входа/выхода
+    signinButton.onclick = handleSignInClick;
+    signoutButton.onclick = handleSignOutClick;
   </script>
 </body>
 </html>
