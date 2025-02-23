@@ -6,7 +6,7 @@
   <title>Drawing App Pro</title>
 
   <!-- Google API Loader -->
-  <script src="https://apis.google.com/js/api.js"></script>
+  <script async defer src="https://apis.google.com/js/api.js"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -211,7 +211,7 @@
   </style>
 </head>
 <body>
-  <p>version 1.0</p>
+  <p>version 1.01</p>
   <div class="sidebar">
     <h2>Tools</h2>
     <div class="toolbar">
@@ -285,17 +285,22 @@
       gapi.load('client:auth2', initClient);
     }
 
+    // initClient() called after gapi is loaded in DOMContentLoaded
     async function initClient() {
-      await gapi.client.init({
-        apiKey: API_KEY,
-        clientId: CLIENT_ID,
-        discoveryDocs: DISCOVERY_DOCS,
-        scope: SCOPES,
-      });
-      gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
-      updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
-      document.getElementById('authorize_button').onclick = handleAuthClick;
-      document.getElementById('signout_button').onclick = handleSignoutClick;
+      try {
+        await gapi.client.init({
+          apiKey: API_KEY,
+          clientId: CLIENT_ID,
+          discoveryDocs: DISCOVERY_DOCS,
+          scope: SCOPES,
+        });
+        gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
+        updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+        document.getElementById('authorize_button').onclick = handleAuthClick;
+        document.getElementById('signout_button').onclick = handleSignoutClick;
+      } catch (err) {
+        console.error('initClient error:', err);
+      }
     }
 
     function updateSigninStatus(isSignedIn) {
@@ -318,10 +323,10 @@
     function handleSignoutClick() {
       gapi.auth2.getAuthInstance().signOut();
       document.getElementById('driveFileList').innerHTML = '';
+      currentFileId = null;
     }
 
     async function listFiles() {
-      // List up to 10 HTML files in Drive (or all user files with 'file' mimeType)
       try {
         const response = await gapi.client.drive.files.list({
           pageSize: 10,
@@ -356,12 +361,10 @@
           alt: 'media'
         });
         const fileContent = response.body;
-        // naive approach: load content into the canvas outerHTML
-        // or parse JSON if needed.
         document.querySelector('.canvas-container').innerHTML = fileContent;
         currentFileId = fileId;
-        // Might need re-initialization logic for shape events, etc.
         alert('File loaded from Drive.');
+        // TODO: Re-initialize shape events if needed
       } catch (error) {
         console.error('Error loading file', error);
       }
@@ -369,10 +372,8 @@
 
     async function saveToDrive() {
       if (!currentFileId) {
-        // create a new file
         await createFileOnDrive();
       } else {
-        // update existing
         await updateFileOnDrive(currentFileId);
       }
     }
@@ -435,9 +436,9 @@
     document.addEventListener("DOMContentLoaded", () => {
       // Load Google API client after DOM
       if (window.gapi) {
-        gapiLoaded();
+        gapi.load('client:auth2', initClient);
       } else {
-        console.warn("gapi not loaded yet");
+        console.warn("Google API not loaded yet.");
       }
 
       // DOM Elements
@@ -1075,6 +1076,13 @@
         reassignZIndices();
       });
     });
+
+    // Кроме того, раз в 5 секунд пытаемся сохранить, если залогинены
+    setInterval(() => {
+      if (window.gapi && gapi.auth2 && gapi.auth2.getAuthInstance() && gapi.auth2.getAuthInstance().isSignedIn.get()) {
+        saveToDrive();
+      }
+    }, 5000);
   </script>
 </body>
 </html>
