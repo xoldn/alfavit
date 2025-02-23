@@ -1,87 +1,92 @@
-<script>
-const shapes = [];
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drawing App</title>
+    <style>
+        .canvas {
+            width: 600px;
+            height: 400px;
+            border: 1px solid black;
+            position: relative;
+        }
+        .shape {
+            position: absolute;
+            cursor: pointer;
+        }
+        .circle {
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Drawing App</h1>
+    <input type="color" id="colorPicker" value="#ff0000" />
+    <select id="shapeSelector">
+        <option value="rectangle">Rectangle</option>
+        <option value="circle">Circle</option>
+    </select>
+    <input type="number" id="shapeWidth" placeholder="Width" value="50" />
+    <input type="number" id="shapeHeight" placeholder="Height" value="50" />
+    <div class="canvas"></div>
+    <script>
+        const shapes = [];
 
-function addShape(type, x, y, width, height, color) {
-    shapes.push({ type, x, y, width, height, color });
-    renderShapes();
-}
+        function addShape(type, x, y, width, height, color) {
+            shapes.push({ type, x, y, width, height, color });
+            renderShapes();
+        }
 
-function updateShapeColor(index, color) {
-    shapes[index].color = color;
-    renderShapes();
-}
+        function updateShapeColor(index, color) {
+            shapes[index].color = color;
+            renderShapes();
+        }
 
-document.addEventListener("DOMContentLoaded", () => {
-    const canvas = document.querySelector(".canvas");
-    const colorPicker = document.querySelector("#colorPicker");
-    const shapeSelector = document.querySelector("#shapeSelector");
-    const widthInput = document.querySelector("#shapeWidth");
-    const heightInput = document.querySelector("#shapeHeight");
-    let selectedColor = "#ff0000";
-    let selectedShape = "rectangle";
+        document.addEventListener("DOMContentLoaded", () => {
+            const canvas = document.querySelector(".canvas");
+            const colorPicker = document.querySelector("#colorPicker");
+            const shapeSelector = document.querySelector("#shapeSelector");
+            const widthInput = document.querySelector("#shapeWidth");
+            const heightInput = document.querySelector("#shapeHeight");
+            let selectedColor = "#ff0000";
+            let selectedShape = "rectangle";
 
-    colorPicker.addEventListener("input", (event) => {
-        selectedColor = event.target.value;
-    });
-
-    shapeSelector.addEventListener("change", (event) => {
-        selectedShape = event.target.value;
-    });
-
-    canvas.addEventListener("click", (event) => {
-        const rect = canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-        const width = parseInt(widthInput.value) || 50;
-        const height = parseInt(heightInput.value) || 50;
-        addShape(selectedShape, x, y, width, height, selectedColor);
-    });
-
-    function renderShapes() {
-        canvas.innerHTML = "";
-        shapes.forEach((shape, index) => {
-            const div = document.createElement("div");
-            div.classList.add("shape", shape.type);
-            div.style.left = `${shape.x}px`;
-            div.style.top = `${shape.y}px`;
-            div.style.width = `${shape.width}px`;
-            div.style.height = `${shape.height}px`;
-            div.style.backgroundColor = shape.color;
-            div.addEventListener("click", (event) => {
-                event.stopPropagation();
-                updateShapeColor(index, selectedColor);
+            colorPicker.addEventListener("input", (event) => {
+                selectedColor = event.target.value;
             });
-            canvas.appendChild(div);
+
+            shapeSelector.addEventListener("change", (event) => {
+                selectedShape = event.target.value;
+            });
+
+            canvas.addEventListener("click", (event) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+                const width = parseInt(widthInput.value) || 50;
+                const height = parseInt(heightInput.value) || 50;
+                addShape(selectedShape, x, y, width, height, selectedColor);
+            });
+
+            function renderShapes() {
+                canvas.innerHTML = "";
+                shapes.forEach((shape, index) => {
+                    const div = document.createElement("div");
+                    div.classList.add("shape", shape.type);
+                    div.style.left = `${shape.x}px`;
+                    div.style.top = `${shape.y}px`;
+                    div.style.width = `${shape.width}px`;
+                    div.style.height = `${shape.height}px`;
+                    div.style.backgroundColor = shape.color;
+                    div.addEventListener("click", (event) => {
+                        event.stopPropagation();
+                        updateShapeColor(index, selectedColor);
+                    });
+                    canvas.appendChild(div);
+                });
+            }
         });
-    }
-});
-
-// HTML Structure
-
-document.body.innerHTML = `
-<h1>Drawing App</h1>
-<input type="color" id="colorPicker" value="#ff0000" />
-<select id="shapeSelector">
-    <option value="rectangle">Rectangle</option>
-    <option value="circle">Circle</option>
-</select>
-<input type="number" id="shapeWidth" placeholder="Width" value="50" />
-<input type="number" id="shapeHeight" placeholder="Height" value="50" />
-<div class="canvas"></div>
-<style>
-.canvas {
-    width: 600px;
-    height: 400px;
-    border: 1px solid black;
-    position: relative;
-}
-.shape {
-    position: absolute;
-    cursor: pointer;
-}
-.circle {
-    border-radius: 50%;
-}
-</script>
-</style>
-`;
+    </script>
+</body>
+</html>
