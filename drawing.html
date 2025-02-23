@@ -6,7 +6,7 @@
   <title>Drawing App Pro</title>
 
   <!-- Google API Loader -->
-  <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+  <script src="https://apis.google.com/js/api.js"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -433,7 +433,11 @@
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       // Load Google API client after DOM
-      gapiLoaded();
+      if (window.gapi) {
+        gapiLoaded();
+      } else {
+        console.warn("gapi not loaded yet");
+      }
 
       // DOM Elements
       const canvas = document.querySelector(".canvas");
