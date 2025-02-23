@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 const shapes = [];
 
 function addShape(type, x, y, width, height, color) {
@@ -83,3 +84,1139 @@ document.body.innerHTML = `
 }
 </style>
 `;
+=======
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Drawing App Pro - GIS Version</title>
+
+  <!-- Google Identity Services -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <style>
+    /* Общие стили */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f2f2f2;
+      display: flex;
+      height: 100vh;
+    }
+    /* Фиксированная боковая панель, чтобы не сжималась */
+    .sidebar {
+      flex: 0 0 320px;
+      background-color: #fff;
+      border-right: 1px solid #ccc;
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar h2 {
+      margin-bottom: 10px;
+      font-size: 1.2rem;
+    }
+    #appVersion {
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+      color: #666;
+    }
+    .form-group {
+      margin-bottom: 10px;
+      display: flex;
+      flex-direction: column;
+    }
+    .form-group label {
+      margin-bottom: 4px;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    /* Изменённая иконка инструмента pointer – классический курсор */
+    .icon.pointer::before {
+      content: "";
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="black" d="M13,2 L3,14 L8,14 L8,22 L16,14 L13,14 L13,2 Z"/></svg>');
+      background-size: contain;
+      background-repeat: no-repeat;
+    }
+    
+    .icon.rectangle::before {
+      content: "";
+      display: inline-block; /* Было block, теперь inline-block */
+      width: 60%;
+      height: 40%;
+      background: #ccc;
+    }
+    
+    .icon.circle::before {
+      content: "";
+      display: inline-block; /* Было block, теперь inline-block */
+      width: 50%;
+      height: 50%;
+      background: #ccc;
+      border-radius: 50%;
+    }
+    .icon.arrow {
+      font-size: 1.2rem;
+    }
+    .icon.arrow::before {
+      content: "➤";
+    }
+    .icon.text {
+      font-size: 1.2rem;
+    }
+    .icon.text::before {
+      content: "T";
+      font-weight: bold;
+      color: #666;
+    }
+    .canvas-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+    .canvas {
+      width: 900px;
+      height: 600px;
+      border: 1px solid #999;
+      background-color: #fff;
+      position: relative;
+    }
+    .shape {
+      position: absolute;
+      border-style: solid;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-sizing: border-box;
+      transform-origin: center center;
+      padding: 4px;
+    }
+    .shape.locked {
+      pointer-events: none;
+      opacity: 0.5;
+    }
+    .circle {
+      border-radius: 50%;
+    }
+    .shape-text {
+      min-width: 30px;
+      min-height: 20px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .resize-handle {
+      width: 10px;
+      height: 10px;
+      background: #333;
+      position: absolute;
+      right: -5px;
+      bottom: -5px;
+      cursor: nwse-resize;
+    }
+    .rotate-handle {
+      width: 10px;
+      height: 10px;
+      background: #333;
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      cursor: grab;
+      border-radius: 50%;
+    }
+    .selected {
+      outline: 2px dashed #06f;
+    }
+    .layers {
+      flex: 1;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 8px;
+      margin-bottom: 10px;
+      min-height: 50px;
+    }
+    .layer-item {
+      padding: 6px 8px;
+      margin: 4px 0;
+      background: #eee;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: transform 0.2s;
+    }
+    .layer-item:hover {
+      transform: scale(1.01);
+      background: #e2e2e2;
+    }
+    .layer-item.selected {
+      background: #d0ebff;
+      outline: 1px solid #409eff;
+    }
+    #deleteShape {
+      background: #f44336;
+      color: #fff;
+      border: none;
+      padding: 6px 12px;
+      cursor: pointer;
+      border-radius: 4px;
+      margin-bottom: 10px;
+      transition: background 0.2s;
+    }
+    #deleteShape:hover {
+      background: #e03128;
+    }
+    /* Стили для стрелок */
+    .arrow-container {
+      position: absolute;
+    }
+    .arrow-shaft {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      height: 2px; /* будет перезаписываться через JS */
+      background-color: black;
+      transform: translateY(-50%);
+    }
+    .arrow-head {
+      position: absolute;
+      width: 0;
+      height: 0;
+      border-top: 5px solid transparent;
+      border-bottom: 5px solid transparent;
+      border-left: 10px solid black;
+      transform: translateY(-50%);
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <h2>Tools</h2>
+    <div id="appVersion">Version v1.0.5</div>
+    <div class="toolbar">
+      <div class="icon pointer active" data-shape="pointer" title="Pointer"></div>
+      <div class="icon rectangle" data-shape="rectangle" title="Rectangle"></div>
+      <div class="icon circle" data-shape="circle" title="Circle"></div>
+      <div class="icon arrow" data-shape="arrow" title="Arrow"></div>
+      <div class="icon text" data-shape="text" title="Text"></div>
+    </div>
+    <div class="form-group">
+      <label for="colorPicker">Fill Color</label>
+      <input type="color" id="colorPicker" value="#ff0000" />
+    </div>
+    <div class="form-group">
+      <label for="fillOpacityRange">Fill Opacity</label>
+      <input type="range" id="fillOpacityRange" min="0" max="1" step="0.1" value="1" />
+    </div>
+    <div class="form-group">
+      <label for="borderColorPicker">Border Color</label>
+      <input type="color" id="borderColorPicker" value="#000000" />
+    </div>
+    <div class="form-group">
+      <label for="borderOpacityRange">Border Opacity</label>
+      <input type="range" id="borderOpacityRange" min="0" max="1" step="0.1" value="1" />
+    </div>
+    <div class="form-group">
+      <label for="borderWidth">Border Width</label>
+      <input type="number" id="borderWidth" min="0" max="20" value="1" />
+    </div>
+    <div class="form-group">
+      <label><input type="checkbox" id="snapToGrid" /> Snap to Grid</label>
+    </div>
+    <div class="form-group group-btn">
+      <button id="groupShapes">Group</button>
+      <button id="ungroupShapes">Ungroup</button>
+    </div>
+    <div class="form-group">
+      <button id="undo">Undo</button>
+      <button id="redo">Redo</button>
+    </div>
+    <div class="form-group">
+      <button id="export">Export</button>
+    </div>
+    <button id="deleteShape">Delete Shape</button>
+    <h3>Layers</h3>
+    <div class="layers" id="layersList">
+      <!-- Если слоёв нет, отображается сообщение -->
+      <p id="noLayersMsg" style="color:#666; text-align:center;">Нет слоёв</p>
+    </div>
+    <div class="form-group" id="driveControls">
+      <label>Google Drive Integration</label>
+      <button id="signin_button">Sign In</button>
+      <button id="signout_button" style="display:none">Sign Out</button>
+      <div id="driveFileList"></div>
+    </div>
+  </div>
+
+  <div class="canvas-container">
+    <div class="canvas"></div>
+  </div>
+
+  <!-- Скрипт интеграции с Google Drive -->
+  <script>
+    "use strict";
+    const CLIENT_ID = "158627123477-4m4d7dqms8ndlmfq4mejhdguj1jte08m.apps.googleusercontent.com";
+    const SCOPES = "https://www.googleapis.com/auth/drive.file";
+    let accessToken = null;
+    let tokenClient = null;
+    let currentFileId = null;
+
+    window.onload = () => {
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: (tokenResponse) => {
+          accessToken = tokenResponse.access_token;
+          console.log("Got access token", accessToken);
+          listFiles();
+        },
+      });
+    };
+
+    function handleSignInClick() {
+      tokenClient.requestAccessToken({ prompt: "" });
+    }
+
+    function handleSignOutClick() {
+      if (accessToken) {
+        fetch("https://oauth2.googleapis.com/revoke?token=" + accessToken, {
+          method: "POST",
+          headers: { "Content-type": "application/x-www-form-urlencoded" }
+        })
+          .then(() => console.log("Token revoked"))
+          .catch(err => console.error(err));
+      }
+      accessToken = null;
+      currentFileId = null;
+      document.getElementById('driveFileList').innerHTML = '';
+      document.getElementById('signin_button').style.display = 'block';
+      document.getElementById('signout_button').style.display = 'none';
+    }
+
+    async function listFiles() {
+      if (!accessToken) {
+        console.warn("No access token. Sign in first.");
+        return;
+      }
+      try {
+        const resp = await fetch("https://www.googleapis.com/drive/v3/files?pageSize=10&q=mimeType!='application/vnd.google-apps.folder'", {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        const data = await resp.json();
+        const fileListElem = document.getElementById('driveFileList');
+        fileListElem.innerHTML = '';
+        if (data.files && data.files.length > 0) {
+          data.files.forEach(file => {
+            const div = document.createElement('div');
+            div.classList.add('drive-file');
+            div.textContent = `${file.name} (${file.id})`;
+            div.addEventListener('click', () => loadFromDrive(file.id));
+            fileListElem.appendChild(div);
+          });
+        } else {
+          fileListElem.innerHTML = 'No files found.';
+        }
+        document.getElementById('signin_button').style.display = 'none';
+        document.getElementById('signout_button').style.display = 'block';
+      } catch (err) {
+        console.error("Error listing files", err);
+      }
+    }
+
+    async function loadFromDrive(fileId) {
+      if (!accessToken) {
+        alert("No access token");
+        return;
+      }
+      try {
+        const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        const fileContent = await resp.text();
+        document.querySelector('.canvas-container').innerHTML = fileContent;
+        currentFileId = fileId;
+        alert('File loaded from Drive.');
+      } catch (error) {
+        console.error('Error loading file', error);
+      }
+    }
+
+    async function saveToDrive() {
+      if (!accessToken) {
+        console.warn("No access token to save.");
+        return;
+      }
+      if (!currentFileId) {
+        await createFileOnDrive();
+      } else {
+        await updateFileOnDrive(currentFileId);
+      }
+    }
+
+    async function createFileOnDrive() {
+      try {
+        const contentHtml = document.querySelector('.canvas').outerHTML;
+        const contentBlob = new Blob([contentHtml], { type: 'text/html' });
+        const metadata = { name: 'drawing.html', mimeType: 'text/html' };
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+        form.append('file', contentBlob);
+
+        const resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${accessToken}` },
+          body: form
+        });
+        const result = await resp.json();
+        currentFileId = result.id;
+        alert('File created on Drive: ' + currentFileId);
+      } catch (error) {
+        console.error('Error creating file', error);
+      }
+    }
+
+    async function updateFileOnDrive(fileId) {
+      try {
+        const contentHtml = document.querySelector('.canvas').outerHTML;
+        const contentBlob = new Blob([contentHtml], { type: 'text/html' });
+        const metadata = { name: 'drawing.html', mimeType: 'text/html' };
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+        form.append('file', contentBlob);
+
+        await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${accessToken}` },
+          body: form
+        });
+      } catch (error) {
+        console.error('Error updating file', error);
+      }
+    }
+  </script>
+
+  <!-- Основной скрипт приложения рисования -->
+  <script>
+    "use strict";
+    const canvas = document.querySelector(".canvas");
+    const layersList = document.querySelector("#layersList");
+    const noLayersMsg = document.getElementById("noLayersMsg");
+
+    // Константы и начальные переменные
+    const GRID_SIZE = 20;
+    let selectedShapeType = "pointer";
+    let shapes = [];
+    let redoStack = [];
+    let isDrawing = false;
+    let startX = 0;
+    let startY = 0;
+    let currentShape = null;
+    let selectedShapes = new Set();
+
+    let selectedFillColor = "#ff0000";
+    let selectedFillOpacity = 1;
+    let selectedBorderColor = "#000000";
+    let selectedBorderOpacity = 1;
+    let selectedBorderWidth = 1;
+
+    // Элементы управления
+    const colorPicker = document.querySelector("#colorPicker");
+    const fillOpacityRange = document.querySelector("#fillOpacityRange");
+    const borderColorPicker = document.querySelector("#borderColorPicker");
+    const borderOpacityRange = document.querySelector("#borderOpacityRange");
+    const borderWidthInput = document.querySelector("#borderWidth");
+    const snapToGridCheckbox = document.querySelector("#snapToGrid");
+    const groupBtn = document.querySelector("#groupShapes");
+    const ungroupBtn = document.querySelector("#ungroupShapes");
+    const undoButton = document.querySelector("#undo");
+    const redoButton = document.querySelector("#redo");
+    const exportButton = document.querySelector("#export");
+    const shapeIcons = document.querySelectorAll(".icon");
+    const deleteButton = document.querySelector("#deleteShape");
+    const signinButton = document.getElementById("signin_button");
+    const signoutButton = document.getElementById("signout_button");
+
+    // Автоматическое сохранение каждые 5 секунд, если выполнена авторизация
+    setInterval(() => {
+      if (accessToken) {
+        saveToDrive();
+      }
+    }, 5000);
+
+    // Генерация уникального ID
+    function generateId() {
+      return "id-" + Math.random().toString(36).substr(2, 9);
+    }
+
+    // Парсинг числа
+    function safeParseFloat(val, def = 1) {
+      const parsed = parseFloat(val);
+      return isNaN(parsed) ? def : parsed;
+    }
+
+    // Преобразование HEX в RGB
+    function hexToRgb(hex) {
+      hex = hex.replace(/^#/, "");
+      if (hex.length === 3) {
+        return {
+          r: parseInt(hex[0] + hex[0], 16),
+          g: parseInt(hex[1] + hex[1], 16),
+          b: parseInt(hex[2] + hex[2], 16)
+        };
+      } else if (hex.length === 6) {
+        return {
+          r: parseInt(hex.substring(0, 2), 16),
+          g: parseInt(hex.substring(2, 4), 16),
+          b: parseInt(hex.substring(4, 6), 16)
+        };
+      }
+      return null;
+    }
+
+    // Функция привязки к сетке
+    function snap(value, gridSize) {
+      return Math.round(value / gridSize) * gridSize;
+    }
+
+    // Обработчики переключения инструментов
+    shapeIcons.forEach(icon => {
+      icon.addEventListener("click", () => {
+        shapeIcons.forEach(i => i.classList.remove("active"));
+        icon.classList.add("active");
+        selectedShapeType = icon.getAttribute("data-shape");
+      });
+    });
+
+    // Обновление списка слоёв
+    function renderLayers() {
+      layersList.innerHTML = "";
+      if (shapes.length === 0) {
+        layersList.appendChild(noLayersMsg);
+        return;
+      }
+      const sorted = [...shapes].sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0));
+      sorted.forEach(shape => {
+        const div = document.createElement("div");
+        div.classList.add("layer-item");
+        if (selectedShapes.has(shape.id)) {
+          div.classList.add("selected");
+        }
+        div.textContent = `${shape.type} (${shape.id})`;
+        div.draggable = true;
+        div.addEventListener("dragstart", e => {
+          e.dataTransfer.setData("text/plain", shape.id);
+          div.classList.add("layer-moving");
+        });
+        div.addEventListener("dragend", () => div.classList.remove("layer-moving"));
+        div.addEventListener("dragover", e => e.preventDefault());
+        div.addEventListener("drop", e => {
+          e.preventDefault();
+          const draggedId = e.dataTransfer.getData("text/plain");
+          if (draggedId !== shape.id) {
+            reorderShapes(draggedId, shape.id);
+          }
+          div.classList.remove("layer-moving");
+        });
+        div.addEventListener("click", e => {
+          e.stopPropagation();
+          if (!e.shiftKey) selectedShapes.clear();
+          selectedShapes.has(shape.id) ? selectedShapes.delete(shape.id) : selectedShapes.add(shape.id);
+          updateSelectionUI();
+          renderLayers();
+        });
+        layersList.appendChild(div);
+      });
+    }
+
+    // Подсветка выбранных фигур
+    function updateSelectionUI() {
+      shapes.forEach(s => {
+        // Используем s.element для всех фигур (для стрелок оно теперь установлено)
+        s.element.classList.remove("selected");
+        if (selectedShapes.has(s.id)) {
+          s.element.classList.add("selected");
+        }
+      });
+    }
+
+    // Переназначение z-index для фигур
+    function reassignZIndices() {
+      shapes.sort((a, b) => (a.zIndex || 1) - (b.zIndex || 1));
+      shapes.forEach((s, i) => {
+        s.zIndex = i + 1;
+        s.element.style.zIndex = s.zIndex;
+      });
+      renderLayers();
+    }
+
+    // Перестановка фигур (при перетаскивании в списке слоёв)
+    function reorderShapes(draggedId, targetId) {
+      const draggedShape = shapes.find(s => s.id === draggedId);
+      const targetShape = shapes.find(s => s.id === targetId);
+      if (!draggedShape || !targetShape || draggedShape.id === targetShape.id) return;
+      draggedShape.element.classList.add("layer-moving");
+      targetShape.element.classList.add("layer-moving");
+      setTimeout(() => {
+        draggedShape.element.classList.remove("layer-moving");
+        targetShape.element.classList.remove("layer-moving");
+      }, 500);
+      const tempZ = draggedShape.zIndex;
+      draggedShape.zIndex = targetShape.zIndex;
+      targetShape.zIndex = tempZ;
+      reassignZIndices();
+    }
+
+    // Создание стрелки с наконечником
+    function createArrowShape(e) {
+      const rect = canvas.getBoundingClientRect();
+      const startX = e.clientX - rect.left;
+      const startY = e.clientY - rect.top;
+      const arrowId = generateId();
+
+      // Создаем контейнер стрелки
+      const arrowContainer = document.createElement('div');
+      arrowContainer.classList.add('arrow-container');
+      arrowContainer.dataset.id = arrowId;
+      arrowContainer.style.position = 'absolute';
+      arrowContainer.style.left = startX + 'px';
+      arrowContainer.style.top = startY + 'px';
+      arrowContainer.style.zIndex = shapes.length + 1;
+
+      // Создаем стержень стрелки
+      const arrowShaft = document.createElement('div');
+      arrowShaft.classList.add('arrow-shaft');
+      arrowShaft.style.left = '0';
+      arrowShaft.style.top = '50%';
+      arrowShaft.style.height = selectedBorderWidth + 'px';
+      arrowShaft.style.backgroundColor = selectedBorderColor;
+      arrowShaft.style.transform = 'translateY(-50%)';
+      arrowContainer.appendChild(arrowShaft);
+
+      // Создаем наконечник стрелки
+      const arrowHead = document.createElement('div');
+      arrowHead.classList.add('arrow-head');
+      arrowHead.style.borderTop = '5px solid transparent';
+      arrowHead.style.borderBottom = '5px solid transparent';
+      arrowHead.style.borderLeft = '10px solid ' + selectedBorderColor;
+      arrowContainer.appendChild(arrowHead);
+
+      canvas.appendChild(arrowContainer);
+
+      // Важно: для стрелок присваиваем свойство element, чтобы остальные функции могли работать с ними
+      const arrowObj = {
+        id: arrowId,
+        element: arrowContainer,
+        shaft: arrowShaft,
+        head: arrowHead,
+        type: 'arrow',
+        zIndex: shapes.length + 1,
+        startX, startY,
+        endX: startX,
+        endY: startY
+      };
+
+      shapes.push(arrowObj);
+      selectedShapes.clear();
+      selectedShapes.add(arrowId);
+      updateSelectionUI();
+      renderLayers();
+
+      function mouseMove(ev) {
+        const nx = ev.clientX - rect.left;
+        const ny = ev.clientY - rect.top;
+        arrowObj.endX = nx;
+        arrowObj.endY = ny;
+        const dx = nx - startX;
+        const dy = ny - startY;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        arrowShaft.style.width = length + 'px';
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+        arrowContainer.style.transform = `rotate(${angle}deg)`;
+        // Располагаем наконечник в конце линии
+        arrowHead.style.left = (length - 10) + 'px';
+        arrowHead.style.top = '50%';
+        arrowHead.style.transform = 'translateY(-50%)';
+      }
+      function mouseUp() {
+        document.removeEventListener('mousemove', mouseMove);
+        document.removeEventListener('mouseup', mouseUp);
+      }
+      document.addEventListener('mousemove', mouseMove);
+      document.addEventListener('mouseup', mouseUp);
+    }
+
+    // Создание текстовой фигуры
+    function createTextShape(e) {
+      if (selectedShapeType === 'pointer') return;
+      if (selectedShapeType === 'arrow') {
+        createArrowShape(e);
+        return;
+      }
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const id = generateId();
+      const el = document.createElement('div');
+      el.classList.add('shape', 'shape-text');
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      el.style.backgroundColor = 'transparent';
+      el.style.border = 'none';
+      el.style.zIndex = shapes.length + 1;
+      el.style.minWidth = '50px';
+      el.style.minHeight = '20px';
+      el.dataset.id = id;
+      el.contentEditable = 'true';
+      el.innerText = 'Your Text';
+      addShapeEventListeners(el);
+      canvas.appendChild(el);
+      const shapeObj = { id, element: el, type: 'text', zIndex: shapes.length + 1 };
+      shapes.push(shapeObj);
+      selectedShapes.clear();
+      selectedShapes.add(id);
+      updateSelectionUI();
+      addResizeHandle(el);
+      addRotateHandle(el);
+      renderLayers();
+    }
+
+    // Создание фигур (прямоугольник, круг)
+    function createNewShape() {
+      if (selectedShapeType === 'pointer' || selectedShapeType === 'arrow') return null;
+      const id = generateId();
+      const el = document.createElement('div');
+      el.classList.add('shape');
+      if (selectedShapeType === 'circle') el.classList.add('circle');
+      const fillRgb = hexToRgb(selectedFillColor) || { r: 0, g: 0, b: 0 };
+      const borderRgb = hexToRgb(selectedBorderColor) || { r: 0, g: 0, b: 0 };
+      el.style.backgroundColor = `rgba(${fillRgb.r}, ${fillRgb.g}, ${fillRgb.b}, ${selectedFillOpacity})`;
+      el.style.borderWidth = selectedBorderWidth + 'px';
+      el.style.borderColor = `rgba(${borderRgb.r}, ${borderRgb.g}, ${borderRgb.b}, ${selectedBorderOpacity})`;
+      el.style.left = startX + 'px';
+      el.style.top = startY + 'px';
+      el.style.width = '0px';
+      el.style.height = '0px';
+      el.dataset.id = id;
+      addShapeEventListeners(el);
+
+      const shapeObj = { id, element: el, type: selectedShapeType, zIndex: shapes.length + 1 };
+      shapes.push(shapeObj);
+      el.style.zIndex = shapeObj.zIndex;
+      return shapeObj;
+    }
+
+    function addShapeEventListeners(el) {
+      el.addEventListener('mousedown', shapeMouseDown);
+    }
+
+    // Обработка клика по фигурам – если выбран инструмент pointer, то фигура перемещается
+    function shapeMouseDown(e) {
+      if (isDrawing) return;
+      e.stopPropagation();
+      const shapeEl = e.currentTarget;
+      const shapeId = shapeEl.dataset.id;
+      if (!e.shiftKey) selectedShapes.clear();
+      if (!selectedShapes.has(shapeId)) selectedShapes.add(shapeId);
+      updateSelectionUI();
+      renderLayers();
+
+      if (selectedShapeType === 'pointer') {
+        const offsetX = e.offsetX;
+        const offsetY = e.offsetY;
+        function mouseMove(ev) {
+          const cRect = canvas.getBoundingClientRect();
+          let left = ev.clientX - cRect.left - offsetX;
+          let top = ev.clientY - cRect.top - offsetY;
+          if (snapToGridCheckbox.checked) {
+            left = snap(left, GRID_SIZE);
+            top = snap(top, GRID_SIZE);
+          }
+          selectedShapes.forEach(sId => {
+            const sObj = shapes.find(obj => obj.id === sId);
+            if (!sObj) return;
+            const dx = parseInt(sObj.element.style.left) - parseInt(shapeEl.style.left);
+            const dy = parseInt(sObj.element.style.top) - parseInt(shapeEl.style.top);
+            sObj.element.style.left = (left + dx) + 'px';
+            sObj.element.style.top = (top + dy) + 'px';
+          });
+        }
+        function mouseUp() {
+          document.removeEventListener('mousemove', mouseMove);
+          document.removeEventListener('mouseup', mouseUp);
+        }
+        document.addEventListener('mousemove', mouseMove);
+        document.addEventListener('mouseup', mouseUp);
+      }
+    }
+
+    // Добавление ручки изменения размера
+    function addResizeHandle(shapeEl) {
+      if (shapeEl.querySelector('.resize-handle')) return;
+      const resize = document.createElement('div');
+      resize.classList.add('resize-handle');
+      shapeEl.appendChild(resize);
+      resize.addEventListener('mousedown', e => {
+        e.stopPropagation();
+        const initialX = e.clientX;
+        const initialY = e.clientY;
+        const initialW = parseInt(shapeEl.style.width);
+        const initialH = parseInt(shapeEl.style.height);
+        const shapeLeft = parseInt(shapeEl.style.left);
+        const shapeTop = parseInt(shapeEl.style.top);
+        function onMouseMove(ev) {
+          const deltaX = ev.clientX - initialX;
+          const deltaY = ev.clientY - initialY;
+          let newWidth = initialW + deltaX;
+          let newHeight = initialH + deltaY;
+          if (newWidth < 0) {
+            shapeEl.style.left = (shapeLeft + newWidth) + 'px';
+            newWidth = Math.abs(newWidth);
+          }
+          if (newHeight < 0) {
+            shapeEl.style.top = (shapeTop + newHeight) + 'px';
+            newHeight = Math.abs(newHeight);
+          }
+          if (ev.shiftKey) {
+            const aspect = initialW / initialH || 1;
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+              newHeight = newWidth / aspect;
+            } else {
+              newWidth = newHeight * aspect;
+            }
+          }
+          if (snapToGridCheckbox.checked) {
+            newWidth = snap(newWidth, GRID_SIZE);
+            newHeight = snap(newHeight, GRID_SIZE);
+          }
+          shapeEl.style.width = newWidth + 'px';
+          shapeEl.style.height = newHeight + 'px';
+        }
+        function onMouseUp() {
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+        }
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+    }
+
+    // Добавление ручки поворота
+    function addRotateHandle(shapeEl) {
+      if (shapeEl.querySelector('.rotate-handle')) return;
+      const rotate = document.createElement('div');
+      rotate.classList.add('rotate-handle');
+      shapeEl.appendChild(rotate);
+      rotate.addEventListener('mousedown', e => {
+        e.stopPropagation();
+        const rect = canvas.getBoundingClientRect();
+        const centerX = shapeEl.offsetLeft + shapeEl.offsetWidth / 2;
+        const centerY = shapeEl.offsetTop + shapeEl.offsetHeight / 2;
+        function onMouseMove(ev) {
+          const mouseX = ev.clientX - rect.left;
+          const mouseY = ev.clientY - rect.top;
+          const dx = mouseX - centerX;
+          const dy = mouseY - centerY;
+          const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+          shapeEl.style.transform = `rotate(${angle}deg)`;
+        }
+        function onMouseUp() {
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+        }
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+    }
+
+    // Группировка выбранных фигур
+    groupBtn.addEventListener('click', () => {
+      if (selectedShapes.size < 2) return;
+      const groupId = generateId();
+      const groupEl = document.createElement('div');
+      groupEl.classList.add('shape');
+      groupEl.dataset.id = groupId;
+      groupEl.dataset.isGroup = 'true';
+      groupEl.style.position = 'absolute';
+      groupEl.style.border = '2px dashed #444';
+      canvas.appendChild(groupEl);
+
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      const groupedShapes = [];
+      const canvasRect = canvas.getBoundingClientRect();
+      selectedShapes.forEach(sId => {
+        const sObj = shapes.find(s => s.id === sId);
+        if (!sObj) return;
+        const rect = sObj.element.getBoundingClientRect();
+        const offsetLeft = rect.left - canvasRect.left;
+        const offsetTop = rect.top - canvasRect.top;
+        minX = Math.min(minX, offsetLeft);
+        minY = Math.min(minY, offsetTop);
+        maxX = Math.max(maxX, offsetLeft + rect.width);
+        maxY = Math.max(maxY, offsetTop + rect.height);
+        groupedShapes.push(sObj);
+      });
+      groupEl.style.left = `${minX}px`;
+      groupEl.style.top = `${minY}px`;
+      groupEl.style.width = `${maxX - minX}px`;
+      groupEl.style.height = `${maxY - minY}px`;
+
+      groupedShapes.forEach(sObj => {
+        const rect = sObj.element.getBoundingClientRect();
+        const offsetLeft = rect.left - canvasRect.left;
+        const offsetTop = rect.top - canvasRect.top;
+        sObj.element.style.left = (offsetLeft - minX) + 'px';
+        sObj.element.style.top = (offsetTop - minY) + 'px';
+        groupEl.appendChild(sObj.element);
+      });
+      shapes = shapes.filter(s => !selectedShapes.has(s.id));
+      const groupObj = { id: groupId, element: groupEl, type: 'group', zIndex: shapes.length + 1 };
+      shapes.push(groupObj);
+      groupEl.style.zIndex = groupObj.zIndex;
+      selectedShapes.clear();
+      selectedShapes.add(groupId);
+      updateSelectionUI();
+      renderLayers();
+    });
+
+    // Разгруппировка
+    ungroupBtn.addEventListener('click', () => {
+      if (selectedShapes.size !== 1) return;
+      const id = [...selectedShapes][0];
+      const groupObj = shapes.find(s => s.id === id);
+      if (!groupObj || groupObj.type !== 'group') return;
+      const groupEl = groupObj.element;
+      const canvasRect = canvas.getBoundingClientRect();
+      while (groupEl.firstChild) {
+        const child = groupEl.firstChild;
+        if (child.classList && child.classList.contains('shape')) {
+          const childRect = child.getBoundingClientRect();
+          const offsetLeft = childRect.left - canvasRect.left;
+          const offsetTop = childRect.top - canvasRect.top;
+          child.style.left = offsetLeft + 'px';
+          child.style.top = offsetTop + 'px';
+          canvas.appendChild(child);
+          const childId = child.dataset.id;
+          let cShape = shapes.find(x => x.id === childId);
+          if (!cShape) {
+            cShape = { id: childId, element: child, type: child.classList.contains('circle') ? 'circle' : child.classList.contains('shape-text') ? 'text' : 'rectangle', zIndex: shapes.length + 1 };
+            shapes.push(cShape);
+            child.style.zIndex = cShape.zIndex;
+          } else {
+            cShape.zIndex = shapes.length + 1;
+            child.style.zIndex = cShape.zIndex;
+          }
+        } else {
+          groupEl.removeChild(child);
+        }
+      }
+      shapes = shapes.filter(s => s.id !== id);
+      groupEl.remove();
+      selectedShapes.clear();
+      renderLayers();
+    });
+
+    // Undo и Redo
+    undoButton.addEventListener('click', () => {
+      if (shapes.length > 0) {
+        const last = shapes.pop();
+        redoStack.push(last);
+        last.element.remove();
+        selectedShapes.delete(last.id);
+        renderLayers();
+      }
+    });
+
+    redoButton.addEventListener('click', () => {
+      if (redoStack.length > 0) {
+        const shapeObj = redoStack.pop();
+        shapes.push(shapeObj);
+        canvas.appendChild(shapeObj.element);
+        reassignZIndices();
+      }
+    });
+
+    // Экспорт
+    exportButton.addEventListener('click', () => {
+      const data = `<html>\n<body>\n${canvas.outerHTML}\n</body>\n</html>`;
+      const blob = new Blob([data], { type: 'text/html' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'drawing.html';
+      a.click();
+    });
+
+    // Удаление фигур
+    deleteButton.addEventListener('click', () => {
+      if (selectedShapes.size < 1) return;
+      selectedShapes.forEach(sId => {
+        const sObj = shapes.find(s => s.id === sId);
+        if (sObj) {
+          sObj.element.remove();
+          shapes = shapes.filter(s => s.id !== sId);
+        }
+      });
+      selectedShapes.clear();
+      renderLayers();
+    });
+
+    // Обновление стилей при изменении цвета и параметров границы
+    colorPicker.addEventListener('input', e => {
+      selectedFillColor = e.target.value;
+      selectedShapes.forEach(sId => {
+        const sObj = shapes.find(s => s.id === sId);
+        if (sObj && sObj.type !== 'group' && sObj.type !== 'arrow') {
+          const rgb = hexToRgb(selectedFillColor) || { r: 0, g: 0, b: 0 };
+          sObj.element.style.backgroundColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedFillOpacity})`;
+        }
+      });
+    });
+
+    fillOpacityRange.addEventListener('input', e => {
+      selectedFillOpacity = safeParseFloat(e.target.value, 1);
+      selectedShapes.forEach(sId => {
+        const sObj = shapes.find(s => s.id === sId);
+        if (sObj && sObj.type !== 'group' && sObj.type !== 'arrow') {
+          const fillRgb = hexToRgb(selectedFillColor) || { r: 0, g: 0, b: 0 };
+          sObj.element.style.backgroundColor = `rgba(${fillRgb.r}, ${fillRgb.g}, ${fillRgb.b}, ${selectedFillOpacity})`;
+        }
+      });
+    });
+
+    borderColorPicker.addEventListener('input', e => {
+      selectedBorderColor = e.target.value;
+      selectedShapes.forEach(sId => {
+        const sObj = shapes.find(s => s.id === sId);
+        if (sObj && sObj.type !== 'group') {
+          if (sObj.type === 'arrow') {
+            sObj.shaft.style.backgroundColor = selectedBorderColor;
+            sObj.head.style.borderLeft = '10px solid ' + selectedBorderColor;
+          } else {
+            const rgb = hexToRgb(selectedBorderColor) || { r: 0, g: 0, b: 0 };
+            sObj.element.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
+          }
+        }
+      });
+    });
+
+    borderOpacityRange.addEventListener('input', e => {
+      selectedBorderOpacity = safeParseFloat(e.target.value, 1);
+      selectedShapes.forEach(sId => {
+        const sObj = shapes.find(s => s.id === sId);
+        if (sObj && sObj.type !== 'group') {
+          if (sObj.type === 'arrow') {
+            const rgb = hexToRgb(selectedBorderColor) || { r: 0, g: 0, b: 0 };
+            sObj.shaft.style.backgroundColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
+            sObj.head.style.borderLeft = '10px solid rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + selectedBorderOpacity + ')';
+          } else {
+            const rgb = hexToRgb(selectedBorderColor) || { r: 0, g: 0, b: 0 };
+            sObj.element.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
+          }
+        }
+      });
+    });
+
+    borderWidthInput.addEventListener('input', e => {
+      selectedBorderWidth = parseInt(e.target.value);
+      selectedShapes.forEach(sId => {
+        const sObj = shapes.find(s => s.id === sId);
+        if (sObj && sObj.type !== 'group') {
+          if (sObj.type === 'arrow') {
+            const rgb = hexToRgb(selectedBorderColor) || { r: 0, g: 0, b: 0 };
+            sObj.shaft.style.height = selectedBorderWidth + 'px';
+            sObj.head.style.borderLeft = '10px solid rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + selectedBorderOpacity + ')';
+          } else {
+            sObj.element.style.borderWidth = selectedBorderWidth + 'px';
+          }
+        }
+      });
+    });
+
+    // Обработчики событий на холсте
+    canvas.addEventListener('mousedown', e => {
+      if (selectedShapeType === 'pointer') return;
+      if (selectedShapeType === 'arrow') {
+        createArrowShape(e);
+        return;
+      }
+      if (selectedShapeType === 'text') {
+        createTextShape(e);
+        return;
+      }
+      const rect = canvas.getBoundingClientRect();
+      startX = e.clientX - rect.left;
+      startY = e.clientY - rect.top;
+      isDrawing = true;
+      currentShape = createNewShape();
+      if (currentShape) {
+        canvas.appendChild(currentShape.element);
+        selectedShapes.clear();
+        selectedShapes.add(currentShape.id);
+        updateSelectionUI();
+      }
+    });
+
+    canvas.addEventListener('mousemove', e => {
+      if (!isDrawing || !currentShape) return;
+      const rect = canvas.getBoundingClientRect();
+      let width = (e.clientX - rect.left) - parseInt(currentShape.element.style.left);
+      let height = (e.clientY - rect.top) - parseInt(currentShape.element.style.top);
+      if (snapToGridCheckbox.checked) {
+        width = snap(width, GRID_SIZE);
+        height = snap(height, GRID_SIZE);
+      }
+      currentShape.element.style.width = width + 'px';
+      currentShape.element.style.height = height + 'px';
+      if (currentShape.type === 'circle') {
+        currentShape.element.style.borderRadius = '50%';
+      }
+    });
+
+    canvas.addEventListener('mouseup', e => {
+      if (!isDrawing) return;
+      isDrawing = false;
+      if (currentShape) {
+        const shapeLeft = parseInt(currentShape.element.style.left);
+        const shapeTop = parseInt(currentShape.element.style.top);
+        let shapeW = parseInt(currentShape.element.style.width);
+        let shapeH = parseInt(currentShape.element.style.height);
+        if (shapeW < 0) {
+          currentShape.element.style.left = (shapeLeft + shapeW) + 'px';
+          currentShape.element.style.width = Math.abs(shapeW) + 'px';
+        }
+        if (shapeH < 0) {
+          currentShape.element.style.top = (shapeTop + shapeH) + 'px';
+          currentShape.element.style.height = Math.abs(shapeH) + 'px';
+        }
+        addResizeHandle(currentShape.element);
+        addRotateHandle(currentShape.element);
+        currentShape = null;
+      }
+      reassignZIndices();
+    });
+
+    // Привязка событий для кнопок входа/выхода
+    signinButton.onclick = handleSignInClick;
+    signoutButton.onclick = handleSignOutClick;
+  </script>
+</body>
+</html>
+>>>>>>> refs/remotes/origin/main
