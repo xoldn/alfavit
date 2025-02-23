@@ -7,52 +7,45 @@
   <style>
     * {
       box-sizing: border-box;
-    }
-
-    body {
       margin: 0;
       padding: 0;
+    }
+    body {
       font-family: Arial, sans-serif;
       background-color: #f2f2f2;
       display: flex;
       flex-direction: row;
       height: 100vh;
     }
-
-    /* Sidebar styles */
     .sidebar {
-      width: 250px;
+      width: 280px;
       background-color: #ffffff;
       border-right: 1px solid #ccc;
       display: flex;
       flex-direction: column;
       padding: 16px;
+      overflow-y: auto;
     }
-
     .sidebar h2 {
       margin-top: 0;
+      margin-bottom: 10px;
     }
-
     .form-group {
       margin-bottom: 10px;
       display: flex;
       flex-direction: column;
-      align-items: flex-start;
     }
-
     .form-group label {
       margin-bottom: 4px;
       font-weight: bold;
       font-size: 14px;
     }
-
     .toolbar {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
       margin-bottom: 16px;
     }
-
     .icon {
       width: 40px;
       height: 40px;
@@ -64,7 +57,6 @@
       align-items: center;
       user-select: none;
     }
-
     .icon.rectangle::before {
       content: "";
       width: 60%;
@@ -72,7 +64,6 @@
       background: #ccc;
       display: block;
     }
-
     .icon.circle::before {
       content: "";
       width: 50%;
@@ -80,6 +71,11 @@
       background: #ccc;
       border-radius: 50%;
       display: block;
+    }
+    .icon.text::before {
+      content: "T";
+      font-weight: bold;
+      color: #666;
     }
 
     .canvas-container {
@@ -89,7 +85,6 @@
       align-items: center;
       overflow: hidden;
     }
-
     .canvas {
       width: 900px;
       height: 600px;
@@ -100,19 +95,26 @@
 
     .shape {
       position: absolute;
-      cursor: move;
       border: 2px solid black;
       display: flex;
       justify-content: center;
       align-items: center;
       box-sizing: border-box;
       transform-origin: center center;
+      padding: 4px;
     }
-
+    .shape.locked {
+      pointer-events: none;
+      opacity: 0.5;
+    }
     .circle {
       border-radius: 50%;
     }
-
+    .shape-text {
+      white-space: nowrap;
+      min-width: 30px;
+      min-height: 20px;
+    }
     .resize-handle {
       width: 10px;
       height: 10px;
@@ -122,7 +124,6 @@
       bottom: -5px;
       cursor: nwse-resize;
     }
-
     .rotate-handle {
       width: 10px;
       height: 10px;
@@ -134,13 +135,9 @@
       cursor: grab;
       border-radius: 50%;
     }
-
-    /* Active selection outline */
     .selected {
       outline: 2px dashed blue;
     }
-
-    /* Layers list */
     .layers {
       flex: 1;
       overflow-y: auto;
@@ -148,11 +145,6 @@
       border-radius: 4px;
       padding: 8px;
     }
-
-    .layers h3 {
-      margin-top: 0;
-    }
-
     .layer-item {
       padding: 4px 8px;
       margin: 4px 0;
@@ -160,10 +152,17 @@
       border-radius: 4px;
       cursor: pointer;
     }
-
     .layer-item.selected {
       background: #d0ebff;
       outline: 1px solid #409eff;
+    }
+    .layer-buttons {
+      display: flex;
+      gap: 4px;
+      margin-top: 4px;
+    }
+    .group-btn {
+      margin-bottom: 10px;
     }
   </style>
 </head>
@@ -173,6 +172,7 @@
     <div class="toolbar">
       <div class="icon rectangle" data-shape="rectangle" title="Rectangle"></div>
       <div class="icon circle" data-shape="circle" title="Circle"></div>
+      <div class="icon text" data-shape="text" title="Text"></div>
     </div>
     <div class="form-group">
       <label for="colorPicker">Fill Color</label>
@@ -185,6 +185,13 @@
     <div class="form-group">
       <label for="borderWidth">Border Width</label>
       <input type="number" id="borderWidth" min="0" max="20" value="1" />
+    </div>
+    <div class="form-group">
+      <label><input type="checkbox" id="snapToGrid" /> Snap to Grid</label>
+    </div>
+    <div class="form-group group-btn">
+      <button id="groupShapes">Group</button>
+      <button id="ungroupShapes">Ungroup</button>
     </div>
     <div class="form-group">
       <button id="undo">Undo</button>
@@ -202,35 +209,39 @@
 
   <script>
     document.addEventListener("DOMContentLoaded", () => {
+      // DOM Elements
       const canvas = document.querySelector(".canvas");
       const layersList = document.querySelector("#layersList");
-
       const colorPicker = document.querySelector("#colorPicker");
       const opacityRange = document.querySelector("#opacityRange");
       const borderWidthInput = document.querySelector("#borderWidth");
+      const snapToGridCheckbox = document.querySelector("#snapToGrid");
+      const groupBtn = document.querySelector("#groupShapes");
+      const ungroupBtn = document.querySelector("#ungroupShapes");
 
       const undoButton = document.querySelector("#undo");
       const redoButton = document.querySelector("#redo");
       const exportButton = document.querySelector("#export");
       const shapeIcons = document.querySelectorAll(".icon");
 
+      // State
       let selectedShapeType = "rectangle";
-      let shapes = [];
+      let shapes = []; // Array of shape objects { id, element, type, locked, hidden, parentId }
       let history = [];
       let redoStack = [];
-
       let isDrawing = false;
       let startX = 0;
       let startY = 0;
       let currentShape = null;
-      let currentRotation = 0;
 
       let selectedColor = "#ff0000";
       let selectedOpacity = 1;
       let selectedBorderWidth = 1;
 
-      // shapeData: { id, element, type, zIndex }
+      // For multi-selection
+      let selectedShapes = new Set();
 
+      // Generate ID
       function generateId() {
         return "id-" + Math.random().toString(36).substr(2, 9);
       }
@@ -238,32 +249,54 @@
       // Rerender layers panel
       function renderLayers() {
         layersList.innerHTML = "";
-        // Sort shapes by z-index descending
-        let sorted = [...shapes].sort((a, b) => parseInt(b.element.style.zIndex || 0) - parseInt(a.element.style.zIndex || 0));
+        // Sort by zIndex descending
+        const sorted = [...shapes].sort(
+          (a, b) => parseInt((b.element.style.zIndex || 0)) - parseInt((a.element.style.zIndex || 0))
+        );
         sorted.forEach(shape => {
+          // If shape is in a group, we might skip or label differently
           const div = document.createElement("div");
           div.classList.add("layer-item");
-          if (shape.element.classList.contains("selected")) {
+          if (selectedShapes.has(shape.id)) {
             div.classList.add("selected");
           }
           div.textContent = `${shape.type} (${shape.id})`;
-          div.addEventListener("click", () => {
-            selectShape(shape.id);
+          div.addEventListener("click", (e) => {
+            e.stopPropagation();
+            if (!e.shiftKey) {
+              selectedShapes.clear();
+            }
+            if (selectedShapes.has(shape.id)) {
+              selectedShapes.delete(shape.id);
+            } else {
+              selectedShapes.add(shape.id);
+            }
+            updateSelectionUI();
+            renderLayers();
           });
           layersList.appendChild(div);
         });
       }
 
-      // De-select all shapes, select one shape by id
-      function selectShape(id) {
-        shapes.forEach(s => s.element.classList.remove("selected"));
-        let shapeObj = shapes.find(s => s.id === id);
-        if (shapeObj) {
-          shapeObj.element.classList.add("selected");
-        }
+      // Update shape selection UI
+      function updateSelectionUI() {
+        shapes.forEach(s => {
+          s.element.classList.remove("selected");
+        });
+        shapes.forEach(s => {
+          if (selectedShapes.has(s.id)) {
+            s.element.classList.add("selected");
+        }});
+      }
+
+      // Rebuild shape objects in array -> for layering
+      function addShape(shapeObj) {
+        shapes.push(shapeObj);
+        redoStack = [];
         renderLayers();
       }
 
+      // Tools & UI Listeners
       shapeIcons.forEach(icon => {
         icon.addEventListener("click", () => {
           selectedShapeType = icon.getAttribute("data-shape");
@@ -288,6 +321,9 @@
           const last = shapes.pop();
           redoStack.push(last);
           last.element.remove();
+          if (selectedShapes.has(last.id)) {
+            selectedShapes.delete(last.id);
+          }
           renderLayers();
         }
       });
@@ -302,8 +338,7 @@
       });
 
       exportButton.addEventListener("click", () => {
-        // We'll create an SVG or just export the HTML
-        const data = canvas.outerHTML;
+        const data = `<html>\n<body>\n${canvas.outerHTML}\n</body>\n</html>`;
         const blob = new Blob([data], { type: "text/html" });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
@@ -311,54 +346,147 @@
         a.click();
       });
 
-      // Drawing logic
+      // Grouping
+      groupBtn.addEventListener("click", () => {
+        if (selectedShapes.size < 2) return;
+        // We'll create a container shape
+        const groupId = generateId();
+        const groupEl = document.createElement("div");
+        groupEl.classList.add("shape");
+        groupEl.style.position = "absolute";
+        groupEl.style.left = "0px";
+        groupEl.style.top = "0px";
+        groupEl.style.width = "0px";
+        groupEl.style.height = "0px";
+        groupEl.style.border = "2px dashed #444";
+        groupEl.style.zIndex = shapes.length + 1;
+        groupEl.dataset.id = groupId;
+        groupEl.dataset.isGroup = "true";
+        canvas.appendChild(groupEl);
+
+        // Move selected shapes inside
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+        const groupedShapes = [];
+        shapes.forEach(s => {
+          if (selectedShapes.has(s.id)) {
+            // measure bounding box
+            const el = s.element;
+            const x = parseInt(el.style.left);
+            const y = parseInt(el.style.top);
+            const w = parseInt(el.style.width) || el.offsetWidth;
+            const h = parseInt(el.style.height) || el.offsetHeight;
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+            if (x + w > maxX) maxX = x + w;
+            if (y + h > maxY) maxY = y + h;
+            groupedShapes.push(s);
+          }
+        });
+        const groupWidth = maxX - minX;
+        const groupHeight = maxY - minY;
+        groupEl.style.left = `${minX}px`;
+        groupEl.style.top = `${minY}px`;
+        groupEl.style.width = `${groupWidth}px`;
+        groupEl.style.height = `${groupHeight}px`;
+        // Move each shape inside groupEl
+        groupedShapes.forEach(s => {
+          const el = s.element;
+          const shapeLeft = parseInt(el.style.left) - minX;
+          const shapeTop = parseInt(el.style.top) - minY;
+          el.style.left = shapeLeft + "px";
+          el.style.top = shapeTop + "px";
+          groupEl.appendChild(el);
+        });
+        // Remove old shapeObj from main shapes list
+        shapes = shapes.filter(s => !selectedShapes.has(s.id));
+        // add new shapeObj for the group
+        const groupObj = {
+          id: groupId,
+          element: groupEl,
+          type: "group",
+        };
+        addShape(groupObj);
+        // clear selection, select new group
+        selectedShapes.clear();
+        selectedShapes.add(groupId);
+        updateSelectionUI();
+      });
+
+      ungroupBtn.addEventListener("click", () => {
+        // Only ungroup if selected shape is a group
+        if (selectedShapes.size !== 1) return;
+        const id = [...selectedShapes][0];
+        const shapeObj = shapes.find(s => s.id === id);
+        if (!shapeObj || shapeObj.type !== "group") return;
+        // move children out
+        const groupEl = shapeObj.element;
+        while (groupEl.firstChild) {
+          const child = groupEl.firstChild;
+          if (child.classList && child.classList.contains("shape")) {
+            // re-position child in canvas
+            const offsetLeft = parseInt(groupEl.style.left);
+            const offsetTop = parseInt(groupEl.style.top);
+            child.style.left = (offsetLeft + parseInt(child.style.left)) + "px";
+            child.style.top = (offsetTop + parseInt(child.style.top)) + "px";
+            canvas.appendChild(child);
+            // re-add to shapes
+            const childId = child.dataset.id;
+            shapes.push({
+              id: childId,
+              element: child,
+              type: child.dataset.isGroup === "true" ? "group" : (child.classList.contains("circle") ? "circle" : "rectangle"),
+            });
+          } else {
+            groupEl.removeChild(child);
+          }
+        }
+        // remove group shape from shapes
+        shapes = shapes.filter(s => s.id !== id);
+        groupEl.remove();
+        selectedShapes.clear();
+        renderLayers();
+      });
+
+      // Snap to grid helper
+      function snap(value, gridSize) {
+        return Math.round(value / gridSize) * gridSize;
+      }
+
+      // Event Listeners for drawing
       canvas.addEventListener("mousedown", e => {
-        // If clicked on shape? We'll check if we want to draw or move?
-        // For now, let's assume we are drawing a new shape.
+        // if click on existing shape? check if we want to move?
+        // We'll assume we want to create new shape if not shape type 'text'
+        if (selectedShapeType === "text") {
+          // Create text shape
+          createTextShape(e);
+          return;
+        }
         const rect = canvas.getBoundingClientRect();
         startX = e.clientX - rect.left;
         startY = e.clientY - rect.top;
         isDrawing = true;
-
-        // Create shape
-        const shapeEl = document.createElement("div");
-        shapeEl.classList.add("shape", selectedShapeType);
-        shapeEl.style.left = startX + "px";
-        shapeEl.style.top = startY + "px";
-        shapeEl.style.backgroundColor = selectedColor;
-        shapeEl.style.opacity = selectedOpacity;
-        shapeEl.style.borderWidth = selectedBorderWidth + "px";
-        shapeEl.style.borderStyle = "solid";
-        shapeEl.style.borderColor = "black";
-        shapeEl.style.zIndex = shapes.length + 1;
-
-        const id = generateId();
-        shapeEl.dataset.id = id;
-
-        // Add to canvas
-        canvas.appendChild(shapeEl);
-
-        currentShape = {
-          id,
-          element: shapeEl,
-          type: selectedShapeType,
-        };
-
-        shapes.push(currentShape);
-        redoStack = [];
-        // auto select
-        selectShape(id);
-
-        // Add event listeners for shape
-        addShapeEventListeners(shapeEl);
+        currentShape = createNewShape();
+        currentShape.element.style.left = startX + "px";
+        currentShape.element.style.top = startY + "px";
+        canvas.appendChild(currentShape.element);
+        addShape(currentShape);
+        selectedShapes.clear();
+        selectedShapes.add(currentShape.id);
+        updateSelectionUI();
       });
 
       canvas.addEventListener("mousemove", e => {
         if (!isDrawing || !currentShape) return;
-
         const rect = canvas.getBoundingClientRect();
-        const width = (e.clientX - rect.left) - parseInt(currentShape.element.style.left);
-        const height = (e.clientY - rect.top) - parseInt(currentShape.element.style.top);
+        let width = (e.clientX - rect.left) - parseInt(currentShape.element.style.left);
+        let height = (e.clientY - rect.top) - parseInt(currentShape.element.style.top);
+        if (snapToGridCheckbox.checked) {
+          width = snap(width, 20);
+          height = snap(height, 20);
+        }
         currentShape.element.style.width = width + "px";
         currentShape.element.style.height = height + "px";
         if (currentShape.type === "circle") {
@@ -369,6 +497,12 @@
       canvas.addEventListener("mouseup", e => {
         if (!isDrawing) return;
         isDrawing = false;
+        if (currentShape && parseInt(currentShape.element.style.width) < 0) {
+          currentShape.element.style.width = 0 + "px";
+        }
+        if (currentShape && parseInt(currentShape.element.style.height) < 0) {
+          currentShape.element.style.height = 0 + "px";
+        }
         if (currentShape) {
           addResizeHandle(currentShape.element);
           addRotateHandle(currentShape.element);
@@ -377,26 +511,116 @@
         renderLayers();
       });
 
-      // Add shape event listeners
+      // Create new shape object
+      function createNewShape() {
+        const id = generateId();
+        const el = document.createElement("div");
+        el.classList.add("shape");
+        if (selectedShapeType === "circle") {
+          el.classList.add("circle");
+        }
+        el.style.backgroundColor = selectedColor;
+        el.style.opacity = selectedOpacity;
+        el.style.borderWidth = selectedBorderWidth + "px";
+        el.style.borderStyle = "solid";
+        el.style.borderColor = "black";
+        el.style.zIndex = shapes.length + 1;
+        el.dataset.id = id;
+        el.dataset.isGroup = "false";
+        addShapeEventListeners(el);
+        return {
+          id,
+          element: el,
+          type: selectedShapeType,
+          locked: false,
+          hidden: false,
+        };
+      }
+
+      function createTextShape(e) {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const id = generateId();
+        const el = document.createElement("div");
+        el.classList.add("shape", "shape-text");
+        el.style.left = x + "px";
+        el.style.top = y + "px";
+        el.style.backgroundColor = selectedColor;
+        el.style.opacity = selectedOpacity;
+        el.style.borderWidth = selectedBorderWidth + "px";
+        el.style.borderStyle = "solid";
+        el.style.borderColor = "black";
+        el.style.zIndex = shapes.length + 1;
+        el.style.minWidth = "50px";
+        el.style.minHeight = "20px";
+        el.dataset.id = id;
+        el.dataset.isGroup = "false";
+        el.contentEditable = "true";
+        el.innerText = "Your Text";
+        addShapeEventListeners(el);
+        canvas.appendChild(el);
+        shapes.push({ id, element: el, type: "text" });
+        redoStack = [];
+        selectedShapes.clear();
+        selectedShapes.add(id);
+        updateSelectionUI();
+        addResizeHandle(el);
+        addRotateHandle(el);
+        renderLayers();
+      }
+
+      // Add standard shape events
       function addShapeEventListeners(el) {
-        // For moving
         el.addEventListener("mousedown", shapeMouseDown);
       }
 
+      // Shape dragging
       function shapeMouseDown(e) {
-        // If we are drawing new shape, skip.
+        // if we are drawing new shape, skip.
         if (isDrawing) return;
-
-        e.stopPropagation();
+        // multi-select logic
         const shapeEl = e.currentTarget;
-        selectShape(shapeEl.dataset.id);
+        const shapeId = shapeEl.dataset.id;
+        e.stopPropagation();
+        if (!e.shiftKey && !selectedShapes.has(shapeId)) {
+          selectedShapes.clear();
+        }
+        if (selectedShapes.has(shapeId)) {
+          // do nothing?
+        } else {
+          selectedShapes.add(shapeId);
+        }
+        updateSelectionUI();
+        renderLayers();
 
         let offsetX = e.offsetX;
         let offsetY = e.offsetY;
 
         function mouseMove(ev) {
-          shapeEl.style.left = (ev.clientX - canvas.getBoundingClientRect().left - offsetX) + "px";
-          shapeEl.style.top = (ev.clientY - canvas.getBoundingClientRect().top - offsetY) + "px";
+          const cRect = canvas.getBoundingClientRect();
+          let left = (ev.clientX - cRect.left - offsetX);
+          let top = (ev.clientY - cRect.top - offsetY);
+          if (snapToGridCheckbox.checked) {
+            left = snap(left, 20);
+            top = snap(top, 20);
+          }
+          // move all selected shapes together
+          selectedShapes.forEach(sId => {
+            const sObj = shapes.find(obj => obj.id === sId);
+            if (sObj && !sObj.element.dataset.isGroup) {
+              if (!sObj.locked) {
+                // compute relative offset from shapeEl
+                const dx = parseInt(sObj.element.style.left) - parseInt(shapeEl.style.left);
+                const dy = parseInt(sObj.element.style.top) - parseInt(shapeEl.style.top);
+                sObj.element.style.left = (left + dx) + "px";
+                sObj.element.style.top = (top + dy) + "px";
+              }
+            }
+          });
+          // also move the primary shape
+          shapeEl.style.left = left + "px";
+          shapeEl.style.top = top + "px";
         }
 
         function mouseUp() {
@@ -410,9 +634,7 @@
 
       // Adds a resize handle
       function addResizeHandle(shapeEl) {
-        // If already has one, skip
         if (shapeEl.querySelector(".resize-handle")) return;
-
         const resize = document.createElement("div");
         resize.classList.add("resize-handle");
         shapeEl.appendChild(resize);
@@ -427,18 +649,20 @@
           function onMouseMove(ev) {
             const deltaX = ev.clientX - initialX;
             const deltaY = ev.clientY - initialY;
-
             let newWidth = initialW + deltaX;
             let newHeight = initialH + deltaY;
 
-            // If SHIFT is held, keep aspect ratio
             if (ev.shiftKey) {
-              const aspect = initialW / initialH;
+              const aspect = initialW / initialH || 1;
               if (Math.abs(deltaX) > Math.abs(deltaY)) {
                 newHeight = newWidth / aspect;
               } else {
                 newWidth = newHeight * aspect;
               }
+            }
+            if (snapToGridCheckbox.checked) {
+              newWidth = snap(newWidth, 20);
+              newHeight = snap(newHeight, 20);
             }
 
             shapeEl.style.width = newWidth + "px";
@@ -457,9 +681,7 @@
 
       // Adds a rotation handle
       function addRotateHandle(shapeEl) {
-        // If already has one, skip
         if (shapeEl.querySelector(".rotate-handle")) return;
-
         const rotate = document.createElement("div");
         rotate.classList.add("rotate-handle");
         shapeEl.appendChild(rotate);
@@ -468,12 +690,13 @@
 
         rotate.addEventListener("mousedown", e => {
           e.stopPropagation();
-          let centerX = shapeEl.offsetLeft + shapeEl.offsetWidth / 2;
-          let centerY = shapeEl.offsetTop + shapeEl.offsetHeight / 2;
+          const rect = canvas.getBoundingClientRect();
+          const centerX = (shapeEl.offsetLeft + shapeEl.offsetWidth / 2);
+          const centerY = (shapeEl.offsetTop + shapeEl.offsetHeight / 2);
 
           function onMouseMove(ev) {
-            const mouseX = ev.clientX - canvas.getBoundingClientRect().left;
-            const mouseY = ev.clientY - canvas.getBoundingClientRect().top;
+            const mouseX = ev.clientX - rect.left;
+            const mouseY = ev.clientY - rect.top;
 
             const dx = mouseX - centerX;
             const dy = mouseY - centerY;
@@ -491,6 +714,7 @@
           document.addEventListener("mouseup", onMouseUp);
         });
       }
+
     });
   </script>
 </body>
