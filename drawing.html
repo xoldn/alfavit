@@ -55,28 +55,15 @@
       margin-bottom: 16px;
       flex-wrap: wrap;
     }
-    .icon {
-      width: 50px;
-      height: 50px;
-      background: #fafafa;
-      border: 2px solid #666;
-      border-radius: 6px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      cursor: pointer;
-      transition: border-color 0.2s, transform 0.2s;
-      font-size: 1.1rem;
-      user-select: none;
-    }
-    .icon:hover {
-      transform: scale(1.05);
-    }
-    .icon.active {
-      border-color: #f00;
-    }
+    /* Изменённая иконка инструмента pointer – классический курсор */
     .icon.pointer::before {
-      content: "🖱";
+      content: "";
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="black" d="M13,2 L3,14 L8,14 L8,22 L16,14 L13,14 L13,2 Z"/></svg>');
+      background-size: contain;
+      background-repeat: no-repeat;
     }
     .icon.rectangle::before {
       content: "";
@@ -207,12 +194,33 @@
     #deleteShape:hover {
       background: #e03128;
     }
+    /* Стили для стрелок */
+    .arrow-container {
+      position: absolute;
+    }
+    .arrow-shaft {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      height: 2px; /* будет перезаписываться через JS с учетом выбранной толщины */
+      background-color: black;
+      transform: translateY(-50%);
+    }
+    .arrow-head {
+      position: absolute;
+      width: 0;
+      height: 0;
+      border-top: 5px solid transparent;
+      border-bottom: 5px solid transparent;
+      border-left: 10px solid black;
+      transform: translateY(-50%);
+    }
   </style>
 </head>
 <body>
   <div class="sidebar">
     <h2>Tools</h2>
-    <div id="appVersion">Version v1.0.3</div>
+    <div id="appVersion">Version v1.0.4</div>
     <div class="toolbar">
       <div class="icon pointer active" data-shape="pointer" title="Pointer"></div>
       <div class="icon rectangle" data-shape="rectangle" title="Rectangle"></div>
@@ -564,7 +572,6 @@
       const draggedShape = shapes.find(s => s.id === draggedId);
       const targetShape = shapes.find(s => s.id === targetId);
       if (!draggedShape || !targetShape || draggedShape.id === targetShape.id) return;
-      // Анимация при смене порядка
       draggedShape.element.classList.add("layer-moving");
       targetShape.element.classList.add("layer-moving");
       setTimeout(() => {
@@ -577,36 +584,59 @@
       reassignZIndices();
     }
 
-    // Создание стрелки
+    // Создание стрелки с наконечником
     function createArrowShape(e) {
       const rect = canvas.getBoundingClientRect();
       const startX = e.clientX - rect.left;
       const startY = e.clientY - rect.top;
       const arrowId = generateId();
 
-      const arrowEl = document.createElement('div');
-      arrowEl.classList.add('shape');
-      arrowEl.dataset.id = arrowId;
-      arrowEl.style.position = 'absolute';
-      arrowEl.style.border = '2px solid ' + selectedBorderColor;
-      arrowEl.style.background = 'transparent';
-      arrowEl.style.width = '2px';
-      arrowEl.style.height = '2px';
-      arrowEl.style.left = startX + 'px';
-      arrowEl.style.top = startY + 'px';
-      arrowEl.style.zIndex = shapes.length + 1;
+      // Создаем контейнер стрелки
+      const arrowContainer = document.createElement('div');
+      arrowContainer.classList.add('arrow-container');
+      arrowContainer.dataset.id = arrowId;
+      arrowContainer.style.position = 'absolute';
+      arrowContainer.style.left = startX + 'px';
+      arrowContainer.style.top = startY + 'px';
+      arrowContainer.style.zIndex = shapes.length + 1;
+
+      // Создаем стержень стрелки
+      const arrowShaft = document.createElement('div');
+      arrowShaft.classList.add('arrow-shaft');
+      arrowShaft.style.position = 'absolute';
+      arrowShaft.style.left = '0';
+      arrowShaft.style.top = '50%';
+      arrowShaft.style.height = selectedBorderWidth + 'px';
+      arrowShaft.style.backgroundColor = selectedBorderColor;
+      arrowShaft.style.transform = 'translateY(-50%)';
+      arrowContainer.appendChild(arrowShaft);
+
+      // Создаем наконечник стрелки
+      const arrowHead = document.createElement('div');
+      arrowHead.classList.add('arrow-head');
+      arrowHead.style.position = 'absolute';
+      arrowHead.style.width = '0';
+      arrowHead.style.height = '0';
+      arrowHead.style.borderTop = '5px solid transparent';
+      arrowHead.style.borderBottom = '5px solid transparent';
+      arrowHead.style.borderLeft = '10px solid ' + selectedBorderColor;
+      arrowContainer.appendChild(arrowHead);
+
+      canvas.appendChild(arrowContainer);
 
       const arrowObj = {
         id: arrowId,
-        element: arrowEl,
+        container: arrowContainer,
+        shaft: arrowShaft,
+        head: arrowHead,
         type: 'arrow',
         zIndex: shapes.length + 1,
         startX, startY,
         endX: startX,
         endY: startY
       };
+
       shapes.push(arrowObj);
-      canvas.appendChild(arrowEl);
       selectedShapes.clear();
       selectedShapes.add(arrowId);
       updateSelectionUI();
@@ -620,9 +650,13 @@
         const dx = nx - startX;
         const dy = ny - startY;
         const length = Math.sqrt(dx * dx + dy * dy);
-        arrowEl.style.width = length + 'px';
+        arrowShaft.style.width = length + 'px';
         const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-        arrowEl.style.transform = `rotate(${angle}deg)`;
+        arrowContainer.style.transform = `rotate(${angle}deg)`;
+        // Располагаем наконечник в конце линии
+        arrowHead.style.left = (length - 10) + 'px';
+        arrowHead.style.top = '50%';
+        arrowHead.style.transform = 'translateY(-50%)';
       }
       function mouseUp() {
         document.removeEventListener('mousemove', mouseMove);
@@ -696,51 +730,44 @@
       el.addEventListener('mousedown', shapeMouseDown);
     }
 
+    // Изменённая функция обработки клика по фигурам – если выбран инструмент pointer, то фигура перемещается
     function shapeMouseDown(e) {
-      // Если выбран инструмент pointer или arrow – просто выбираем фигуру
-      if (selectedShapeType === 'pointer' || selectedShapeType === 'arrow') {
-        e.stopPropagation();
-        const shapeEl = e.currentTarget;
-        const shapeId = shapeEl.dataset.id;
-        if (!e.shiftKey) selectedShapes.clear();
-        selectedShapes.has(shapeId) ? selectedShapes.delete(shapeId) : selectedShapes.add(shapeId);
-        updateSelectionUI();
-        renderLayers();
-        return;
-      }
-      // Выбираем фигуру и перемещаем её
+      if (isDrawing) return;
+      e.stopPropagation();
       const shapeEl = e.currentTarget;
       const shapeId = shapeEl.dataset.id;
-      e.stopPropagation();
       if (!e.shiftKey) selectedShapes.clear();
-      selectedShapes.add(shapeId);
+      if (!selectedShapes.has(shapeId)) selectedShapes.add(shapeId);
       updateSelectionUI();
       renderLayers();
-      const offsetX = e.offsetX;
-      const offsetY = e.offsetY;
-      function mouseMove(ev) {
-        const cRect = canvas.getBoundingClientRect();
-        let left = ev.clientX - cRect.left - offsetX;
-        let top = ev.clientY - cRect.top - offsetY;
-        if (snapToGridCheckbox.checked) {
-          left = snap(left, GRID_SIZE);
-          top = snap(top, GRID_SIZE);
+
+      if (selectedShapeType === 'pointer') {
+        const offsetX = e.offsetX;
+        const offsetY = e.offsetY;
+        function mouseMove(ev) {
+          const cRect = canvas.getBoundingClientRect();
+          let left = ev.clientX - cRect.left - offsetX;
+          let top = ev.clientY - cRect.top - offsetY;
+          if (snapToGridCheckbox.checked) {
+            left = snap(left, GRID_SIZE);
+            top = snap(top, GRID_SIZE);
+          }
+          selectedShapes.forEach(sId => {
+            const sObj = shapes.find(obj => obj.id === sId);
+            if (!sObj) return;
+            const dx = parseInt(sObj.element.style.left) - parseInt(shapeEl.style.left);
+            const dy = parseInt(sObj.element.style.top) - parseInt(shapeEl.style.top);
+            sObj.element.style.left = (left + dx) + 'px';
+            sObj.element.style.top = (top + dy) + 'px';
+          });
         }
-        selectedShapes.forEach(sId => {
-          const sObj = shapes.find(obj => obj.id === sId);
-          if (!sObj) return;
-          const dx = parseInt(sObj.element.style.left) - parseInt(shapeEl.style.left);
-          const dy = parseInt(sObj.element.style.top) - parseInt(shapeEl.style.top);
-          sObj.element.style.left = (left + dx) + 'px';
-          sObj.element.style.top = (top + dy) + 'px';
-        });
+        function mouseUp() {
+          document.removeEventListener('mousemove', mouseMove);
+          document.removeEventListener('mouseup', mouseUp);
+        }
+        document.addEventListener('mousemove', mouseMove);
+        document.addEventListener('mouseup', mouseUp);
       }
-      function mouseUp() {
-        document.removeEventListener('mousemove', mouseMove);
-        document.removeEventListener('mouseup', mouseUp);
-      }
-      document.addEventListener('mousemove', mouseMove);
-      document.addEventListener('mouseup', mouseUp);
     }
 
     // Добавление ручки изменения размера
@@ -822,7 +849,7 @@
       });
     }
 
-    // Группировка выбранных фигур с использованием getBoundingClientRect
+    // Группировка выбранных фигур
     groupBtn.addEventListener('click', () => {
       if (selectedShapes.size < 2) return;
       const groupId = generateId();
@@ -982,7 +1009,10 @@
         const sObj = shapes.find(s => s.id === sId);
         if (sObj && sObj.type !== 'group') {
           if (sObj.type === 'arrow') {
-            sObj.element.style.border = `2px solid ${selectedBorderColor}`;
+            if (sObj.container) {
+              sObj.shaft.style.backgroundColor = selectedBorderColor;
+              sObj.head.style.borderLeft = '10px solid ' + selectedBorderColor;
+            }
           } else {
             const rgb = hexToRgb(selectedBorderColor) || { r: 0, g: 0, b: 0 };
             sObj.element.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
@@ -998,7 +1028,8 @@
         if (sObj && sObj.type !== 'group') {
           if (sObj.type === 'arrow') {
             const rgb = hexToRgb(selectedBorderColor) || { r: 0, g: 0, b: 0 };
-            sObj.element.style.border = `${selectedBorderWidth}px solid rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
+            sObj.shaft.style.backgroundColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
+            sObj.head.style.borderLeft = '10px solid rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + selectedBorderOpacity + ')';
           } else {
             const rgb = hexToRgb(selectedBorderColor) || { r: 0, g: 0, b: 0 };
             sObj.element.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
@@ -1014,7 +1045,8 @@
         if (sObj && sObj.type !== 'group') {
           if (sObj.type === 'arrow') {
             const rgb = hexToRgb(selectedBorderColor) || { r: 0, g: 0, b: 0 };
-            sObj.element.style.border = `${selectedBorderWidth}px solid rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
+            sObj.shaft.style.height = selectedBorderWidth + 'px';
+            sObj.head.style.borderLeft = '10px solid rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + selectedBorderOpacity + ')';
           } else {
             sObj.element.style.borderWidth = selectedBorderWidth + 'px';
           }
