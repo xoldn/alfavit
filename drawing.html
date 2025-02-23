@@ -26,7 +26,8 @@
         }
         .shape {
             position: absolute;
-            cursor: pointer;
+            cursor: grab;
+            border: 1px solid black;
         }
         .circle {
             border-radius: 50%;
@@ -46,6 +47,15 @@
             background-color: lightgray;
             border-radius: 50%;
         }
+        .resize-handle {
+            width: 10px;
+            height: 10px;
+            background: black;
+            position: absolute;
+            right: -5px;
+            bottom: -5px;
+            cursor: nwse-resize;
+        }
     </style>
 </head>
 <body>
@@ -54,20 +64,18 @@
         <input type="color" id="colorPicker" value="#ff0000" />
         <div class="icon rectangle" data-shape="rectangle"></div>
         <div class="icon circle" data-shape="circle"></div>
-        <input type="number" id="shapeWidth" placeholder="Width" value="50" />
-        <input type="number" id="shapeHeight" placeholder="Height" value="50" />
     </div>
     <div class="canvas"></div>
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             const canvas = document.querySelector(".canvas");
             const colorPicker = document.querySelector("#colorPicker");
-            const widthInput = document.querySelector("#shapeWidth");
-            const heightInput = document.querySelector("#shapeHeight");
             const shapeIcons = document.querySelectorAll(".icon");
             let selectedColor = "#ff0000";
             let selectedShape = "rectangle";
-            let shapes = [];
+            let isDrawing = false;
+            let startX, startY;
+            let currentShape = null;
 
             colorPicker.addEventListener("input", (event) => {
                 selectedColor = event.target.value;
@@ -79,34 +87,67 @@
                 });
             });
 
-            canvas.addEventListener("click", (event) => {
+            canvas.addEventListener("mousedown", (event) => {
                 const rect = canvas.getBoundingClientRect();
-                const x = event.clientX - rect.left;
-                const y = event.clientY - rect.top;
-                const width = parseInt(widthInput.value) || 50;
-                const height = parseInt(heightInput.value) || 50;
-                addShape(selectedShape, x, y, width, height, selectedColor);
+                startX = event.clientX - rect.left;
+                startY = event.clientY - rect.top;
+                isDrawing = true;
+
+                currentShape = document.createElement("div");
+                currentShape.classList.add("shape", selectedShape);
+                currentShape.style.left = `${startX}px`;
+                currentShape.style.top = `${startY}px`;
+                currentShape.style.backgroundColor = selectedColor;
+                currentShape.style.width = `0px`;
+                currentShape.style.height = `0px`;
+                canvas.appendChild(currentShape);
             });
 
-            function addShape(type, x, y, width, height, color) {
-                shapes.push({ type, x, y, width, height, color });
-                renderShapes();
-            }
+            canvas.addEventListener("mousemove", (event) => {
+                if (!isDrawing) return;
+                const rect = canvas.getBoundingClientRect();
+                const width = event.clientX - rect.left - startX;
+                const height = event.clientY - rect.top - startY;
+                currentShape.style.width = `${width}px`;
+                currentShape.style.height = `${height}px`;
+                if (selectedShape === "circle") {
+                    currentShape.style.borderRadius = "50%";
+                }
+            });
 
-            function renderShapes() {
-                canvas.innerHTML = "";
-                shapes.forEach((shape) => {
-                    const div = document.createElement("div");
-                    div.classList.add("shape", shape.type);
-                    div.style.left = `${shape.x}px`;
-                    div.style.top = `${shape.y}px`;
-                    div.style.width = `${shape.width}px`;
-                    div.style.height = `${shape.height}px`;
-                    div.style.backgroundColor = shape.color;
-                    if (shape.type === "circle") {
-                        div.style.borderRadius = "50%";
+            canvas.addEventListener("mouseup", () => {
+                isDrawing = false;
+                if (currentShape) {
+                    addResizeHandle(currentShape);
+                }
+            });
+
+            function addResizeHandle(shape) {
+                const handle = document.createElement("div");
+                handle.classList.add("resize-handle");
+                shape.appendChild(handle);
+
+                handle.addEventListener("mousedown", (event) => {
+                    event.stopPropagation();
+                    let initialX = event.clientX;
+                    let initialY = event.clientY;
+                    let initialWidth = parseInt(shape.style.width);
+                    let initialHeight = parseInt(shape.style.height);
+
+                    function resize(event) {
+                        let newWidth = initialWidth + (event.clientX - initialX);
+                        let newHeight = initialHeight + (event.clientY - initialY);
+                        shape.style.width = `${newWidth}px`;
+                        shape.style.height = `${newHeight}px`;
                     }
-                    canvas.appendChild(div);
+
+                    function stopResize() {
+                        document.removeEventListener("mousemove", resize);
+                        document.removeEventListener("mouseup", stopResize);
+                    }
+
+                    document.addEventListener("mousemove", resize);
+                    document.addEventListener("mouseup", stopResize);
                 });
             }
         });
