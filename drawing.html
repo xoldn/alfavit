@@ -22,7 +22,7 @@
       height: 100vh;
     }
     .sidebar {
-      width: 300px;
+      width: 320px;
       background-color: #ffffff;
       border-right: 1px solid #ccc;
       display: flex;
@@ -33,6 +33,7 @@
     .sidebar h2 {
       margin-top: 0;
       margin-bottom: 10px;
+      font-size: 1.2rem;
     }
     #appVersion {
       font-size: 0.9rem;
@@ -50,49 +51,67 @@
       font-size: 14px;
     }
 
-    /* Highlight the active tool in the toolbar */
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+    }
+
+    /* Tools: pointer, rectangle, circle, arrow, text */
     .icon {
-      width: 40px;
-      height: 40px;
+      width: 50px;
+      height: 50px;
+      background: #fafafa;
       border: 2px solid #666;
       cursor: pointer;
-      border-radius: 4px;
+      border-radius: 6px;
       display: flex;
       justify-content: center;
       align-items: center;
       user-select: none;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, transform 0.2s;
+      font-size: 1.1rem;
+    }
+    .icon:hover {
+      transform: scale(1.05);
     }
     .icon.active {
       border-color: #f00;
     }
 
+    .icon.pointer::before {
+      content: "🖱";
+    }
     .icon.rectangle::before {
       content: "";
+      display: block;
       width: 60%;
       height: 40%;
       background: #ccc;
-      display: block;
     }
     .icon.circle::before {
       content: "";
+      display: block;
       width: 50%;
       height: 50%;
       background: #ccc;
       border-radius: 50%;
-      display: block;
+    }
+    .icon.arrow {
+      font-size: 1.2rem;
+    }
+    .icon.arrow::before {
+      content: "➤";
+    }
+    .icon.text {
+      font-size: 1.2rem;
     }
     .icon.text::before {
       content: "T";
       font-weight: bold;
       color: #666;
-    }
-
-    .toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 16px;
     }
 
     .canvas-container {
@@ -102,6 +121,7 @@
       align-items: center;
       overflow: hidden;
     }
+
     .canvas {
       width: 900px;
       height: 600px;
@@ -110,6 +130,7 @@
       position: relative;
     }
 
+    /* shape styling */
     .shape {
       position: absolute;
       border-style: solid;
@@ -127,12 +148,14 @@
     .circle {
       border-radius: 50%;
     }
+
     .shape-text {
       min-width: 30px;
       min-height: 20px;
       white-space: pre-wrap;
       word-break: break-word;
     }
+
     .resize-handle {
       width: 10px;
       height: 10px;
@@ -155,7 +178,7 @@
     }
 
     .selected {
-      outline: 2px dashed blue;
+      outline: 2px dashed #06f;
     }
 
     .layers {
@@ -166,8 +189,9 @@
       padding: 8px;
       margin-bottom: 10px;
     }
+
     .layer-item {
-      padding: 4px 8px;
+      padding: 6px 8px;
       margin: 4px 0;
       background: #eee;
       border-radius: 4px;
@@ -175,24 +199,27 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      transition: transform 0.2s;
+    }
+    .layer-item:hover {
+      transform: scale(1.01);
+      background: #e2e2e2;
     }
     .layer-item.selected {
       background: #d0ebff;
       outline: 1px solid #409eff;
     }
+
+    /* Hide arrow up/down for layers, we'll do drag reorder with animation */
     .layer-controls {
-      display: flex;
-      gap: 4px;
+      display: none;
     }
-    .layer-btn {
-      background: #ccc;
-      border: none;
-      padding: 2px 4px;
-      cursor: pointer;
-      border-radius: 4px;
-    }
-    .layer-btn:hover {
-      background: #bbb;
+
+    /* drag animation for layer items */
+    .layer-item.layer-moving {
+      background: #ffa;
+      transition: transform 0.3s;
+      transform: scale(1.05);
     }
 
     #deleteShape {
@@ -214,11 +241,13 @@
   <div class="sidebar">
     <h2>Tools</h2>
     <!-- Show version here -->
-    <div id="appVersion">Version v1.0.1</div>
+    <div id="appVersion">Version v1.0.2</div>
 
     <div class="toolbar">
-      <div class="icon rectangle active" data-shape="rectangle" title="Rectangle"></div>
+      <div class="icon pointer active" data-shape="pointer" title="Pointer"></div>
+      <div class="icon rectangle" data-shape="rectangle" title="Rectangle"></div>
       <div class="icon circle" data-shape="circle" title="Circle"></div>
+      <div class="icon arrow" data-shape="arrow" title="Arrow"></div>
       <div class="icon text" data-shape="text" title="Text"></div>
     </div>
     <div class="form-group">
@@ -368,7 +397,7 @@
         document.querySelector('.canvas-container').innerHTML = fileContent;
         currentFileId = fileId;
         alert('File loaded from Drive.');
-        // Re-init shape events if needed.
+        // re-init shape events if needed
       } catch (error) {
         console.error('Error loading file', error);
       }
@@ -433,7 +462,6 @@
           },
           body: form
         });
-        // no alert here
       } catch (error) {
         console.error('Error updating file', error);
       }
@@ -442,11 +470,9 @@
 
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      // Sign in/out
       document.getElementById('signin_button').onclick = handleSignInClick;
       document.getElementById('signout_button').onclick = handleSignOutClick;
 
-      // UI references
       const canvas = document.querySelector(".canvas");
       const layersList = document.querySelector("#layersList");
 
@@ -465,7 +491,7 @@
       const shapeIcons = document.querySelectorAll(".icon");
       const deleteButton = document.querySelector("#deleteShape");
 
-      let selectedShapeType = "rectangle";
+      let selectedShapeType = "pointer";
       let shapes = [];
       let redoStack = [];
       let isDrawing = false;
@@ -473,7 +499,6 @@
       let startY = 0;
       let currentShape = null;
 
-      // We'll store fill + border separately, not using shapeEl.style.opacity.
       let selectedFillColor = "#ff0000";
       let selectedFillOpacity = 1;
       let selectedBorderColor = "#000000";
@@ -482,7 +507,6 @@
 
       let selectedShapes = new Set();
 
-      // auto-save every 5s if token
       setInterval(() => {
         if (accessToken) {
           saveToDrive();
@@ -518,7 +542,6 @@
         return Math.round(value / gridSize) * gridSize;
       }
 
-      // Tools: highlight selected
       shapeIcons.forEach(icon => {
         icon.addEventListener("click", () => {
           shapeIcons.forEach(i => i.classList.remove("active"));
@@ -527,12 +550,8 @@
         });
       });
 
-      /******************************************************/
-      /* LAYERS + RENDER                                    */
-      /******************************************************/
       function renderLayers() {
         layersList.innerHTML = "";
-        // Sort from highest zIndex to lowest
         const sorted = [...shapes].sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0));
         sorted.forEach(shape => {
           const div = document.createElement("div");
@@ -542,10 +561,14 @@
           }
           div.textContent = `${shape.type} (${shape.id})`;
 
-          // Make entire div draggable to reorder
           div.draggable = true;
           div.addEventListener("dragstart", e => {
             e.dataTransfer.setData("text/plain", shape.id);
+            div.classList.add("layer-moving");
+          });
+
+          div.addEventListener("dragend", e => {
+            div.classList.remove("layer-moving");
           });
 
           div.addEventListener("dragover", e => {
@@ -558,27 +581,8 @@
             if (draggedId !== shape.id) {
               reorderShapes(draggedId, shape.id);
             }
+            div.classList.remove("layer-moving");
           });
-
-          const controls = document.createElement("div");
-          controls.classList.add("layer-controls");
-          const upBtn = document.createElement("button");
-          upBtn.classList.add("layer-btn");
-          upBtn.textContent = "▲";
-          upBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            bringForward(shape.id);
-          });
-          const downBtn = document.createElement("button");
-          downBtn.classList.add("layer-btn");
-          downBtn.textContent = "▼";
-          downBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            sendBackward(shape.id);
-          });
-          controls.appendChild(upBtn);
-          controls.appendChild(downBtn);
-          div.appendChild(controls);
 
           div.addEventListener("click", (e) => {
             e.stopPropagation();
@@ -609,7 +613,6 @@
       function bringForward(id) {
         const shapeObj = shapes.find(s => s.id === id);
         if (!shapeObj) return;
-        // Increase zIndex by 1
         shapeObj.zIndex++;
         reassignZIndices();
       }
@@ -617,15 +620,12 @@
       function sendBackward(id) {
         const shapeObj = shapes.find(s => s.id === id);
         if (!shapeObj) return;
-        // Decrease zIndex by 1, but minimum is 1
         shapeObj.zIndex = Math.max(1, shapeObj.zIndex - 1);
         reassignZIndices();
       }
 
       function reassignZIndices() {
-        // Sort shapes ascending by zIndex
         shapes.sort((a, b) => (a.zIndex || 1) - (b.zIndex || 1));
-        // Reassign them in ascending order
         shapes.forEach((s, i) => {
           s.zIndex = i + 1;
           s.element.style.zIndex = s.zIndex;
@@ -633,43 +633,150 @@
         renderLayers();
       }
 
-      // Reorder shapes by drag-and-drop in layers panel
       function reorderShapes(draggedId, targetId) {
         const draggedShape = shapes.find(s => s.id === draggedId);
         const targetShape = shapes.find(s => s.id === targetId);
         if (!draggedShape || !targetShape) return;
-
-        // If shapes are the same, do nothing
         if (draggedShape.id === targetShape.id) return;
-
-        // We'll swap their zIndexes.
+        // swap zIndex with animation
+        const draggedEl = draggedShape.element;
+        const targetEl = targetShape.element;
+        draggedEl.classList.add("layer-moving");
+        targetEl.classList.add("layer-moving");
+        setTimeout(() => {
+          draggedEl.classList.remove("layer-moving");
+          targetEl.classList.remove("layer-moving");
+        }, 500);
         const tempZ = draggedShape.zIndex;
         draggedShape.zIndex = targetShape.zIndex;
         targetShape.zIndex = tempZ;
-
         reassignZIndices();
       }
 
-      /******************************************************/
-      /* CREATE & DRAWING                                   */
-      /******************************************************/
-      function createNewShape() {
-        const id = generateId();
-        const el = document.createElement("div");
-        el.classList.add("shape");
-        if (selectedShapeType === "circle") {
-          el.classList.add("circle");
+      // ============ ARROW CREATION ============
+      function createArrowShape(e) {
+        const rect = canvas.getBoundingClientRect();
+        const startX = e.clientX - rect.left;
+        const startY = e.clientY - rect.top;
+        const arrowId = generateId();
+
+        const arrowEl = document.createElement('div');
+        arrowEl.classList.add('shape');
+        arrowEl.dataset.id = arrowId;
+        arrowEl.style.position = 'absolute';
+        arrowEl.style.border = '2px solid #000';
+        arrowEl.style.background = 'transparent';
+        arrowEl.style.width = '2px';
+        arrowEl.style.height = '2px';
+        arrowEl.style.left = startX + 'px';
+        arrowEl.style.top = startY + 'px';
+        arrowEl.style.zIndex = shapes.length + 1;
+
+        const arrowObj = {
+          id: arrowId,
+          element: arrowEl,
+          type: 'arrow',
+          zIndex: shapes.length + 1,
+          startX, startY,
+          endX: startX,
+          endY: startY
+        };
+        shapes.push(arrowObj);
+        canvas.appendChild(arrowEl);
+        selectedShapes.clear();
+        selectedShapes.add(arrowId);
+        updateSelectionUI();
+        renderLayers();
+
+        function mouseMove(ev) {
+          const nx = ev.clientX - rect.left;
+          const ny = ev.clientY - rect.top;
+          arrowObj.endX = nx;
+          arrowObj.endY = ny;
+
+          const dx = nx - startX;
+          const dy = ny - startY;
+          const length = Math.sqrt(dx*dx + dy*dy);
+          arrowEl.style.width = length + 'px';
+          arrowEl.style.height = '2px';
+          const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+          arrowEl.style.transform = `rotate(${angle}deg)`;
         }
-        // Construct RGBA for fill & border
+
+        function mouseUp() {
+          document.removeEventListener('mousemove', mouseMove);
+          document.removeEventListener('mouseup', mouseUp);
+        }
+
+        document.addEventListener('mousemove', mouseMove);
+        document.addEventListener('mouseup', mouseUp);
+      }
+
+      // ============ TEXT CREATION ============
+      function createTextShape(e) {
+        if (selectedShapeType === 'pointer') {
+          return;
+        } else if (selectedShapeType === 'arrow') {
+          createArrowShape(e);
+          return;
+        }
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const id = generateId();
+        const el = document.createElement('div');
+        el.classList.add('shape', 'shape-text');
+        el.style.left = x + 'px';
+        el.style.top = y + 'px';
+        // text transparent background/border
+        el.style.backgroundColor = 'transparent';
+        el.style.border = 'none';
+        el.style.zIndex = shapes.length + 1;
+        el.style.minWidth = '50px';
+        el.style.minHeight = '20px';
+        el.dataset.id = id;
+        el.contentEditable = 'true';
+        el.innerText = 'Your Text';
+        addShapeEventListeners(el);
+        canvas.appendChild(el);
+        const shapeObj = {
+          id,
+          element: el,
+          type: 'text',
+          zIndex: shapes.length + 1,
+        };
+        shapes.push(shapeObj);
+        selectedShapes.clear();
+        selectedShapes.add(id);
+        updateSelectionUI();
+        addResizeHandle(el);
+        addRotateHandle(el);
+        renderLayers();
+      }
+
+      // ============ NON-TEXT/NON-ARROW CREATION ============
+      function createNewShape() {
+        if (selectedShapeType === 'pointer') {
+          return null;
+        }
+        if (selectedShapeType === 'arrow') {
+          return null;
+        }
+        const id = generateId();
+        const el = document.createElement('div');
+        el.classList.add('shape');
+        if (selectedShapeType === 'circle') {
+          el.classList.add('circle');
+        }
         const fillRgb = hexToRgb(selectedFillColor) || { r: 0, g: 0, b: 0};
         const borderRgb = hexToRgb(selectedBorderColor) || { r: 0, g: 0, b: 0};
         el.style.backgroundColor = `rgba(${fillRgb.r}, ${fillRgb.g}, ${fillRgb.b}, ${selectedFillOpacity})`;
-        el.style.borderWidth = selectedBorderWidth + "px";
+        el.style.borderWidth = selectedBorderWidth + 'px';
         el.style.borderColor = `rgba(${borderRgb.r}, ${borderRgb.g}, ${borderRgb.b}, ${selectedBorderOpacity})`;
-        el.style.left = startX + "px";
-        el.style.top = startY + "px";
-        el.style.width = "0px";
-        el.style.height = "0px";
+        el.style.left = startX + 'px';
+        el.style.top = startY + 'px';
+        el.style.width = '0px';
+        el.style.height = '0px';
         el.dataset.id = id;
         addShapeEventListeners(el);
 
@@ -684,50 +791,29 @@
         return shapeObj;
       }
 
-      function createTextShape(e) {
-        const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const id = generateId();
-        const el = document.createElement("div");
-        el.classList.add("shape", "shape-text");
-        el.style.left = x + "px";
-        el.style.top = y + "px";
-        const fillRgb = hexToRgb(selectedFillColor) || { r: 0, g: 0, b: 0};
-        const borderRgb = hexToRgb(selectedBorderColor) || { r: 0, g: 0, b: 0};
-        el.style.backgroundColor = `rgba(${fillRgb.r}, ${fillRgb.g}, ${fillRgb.b}, ${selectedFillOpacity})`;
-        el.style.borderWidth = selectedBorderWidth + "px";
-        el.style.borderColor = `rgba(${borderRgb.r}, ${borderRgb.g}, ${borderRgb.b}, ${selectedBorderOpacity})`;
-        el.style.zIndex = shapes.length + 1;
-        el.style.minWidth = "50px";
-        el.style.minHeight = "20px";
-        el.dataset.id = id;
-        el.contentEditable = "true";
-        el.innerText = "Your Text";
-        addShapeEventListeners(el);
-        canvas.appendChild(el);
-        const shapeObj = {
-          id,
-          element: el,
-          type: "text",
-          zIndex: shapes.length + 1,
-        };
-        shapes.push(shapeObj);
-        selectedShapes.clear();
-        selectedShapes.add(id);
-        updateSelectionUI();
-        addResizeHandle(el);
-        addRotateHandle(el);
-        renderLayers();
-      }
-
       function addShapeEventListeners(el) {
-        el.addEventListener("mousedown", shapeMouseDown);
+        el.addEventListener('mousedown', shapeMouseDown);
       }
 
-      // DRAG
       function shapeMouseDown(e) {
         if (isDrawing) return;
+        // pointer/arrow just select
+        if (selectedShapeType === 'pointer' || selectedShapeType === 'arrow') {
+          e.stopPropagation();
+          const shapeEl = e.currentTarget;
+          const shapeId = shapeEl.dataset.id;
+          if (!e.shiftKey) {
+            selectedShapes.clear();
+          }
+          if (!selectedShapes.has(shapeId)) {
+            selectedShapes.add(shapeId);
+          } else {
+            selectedShapes.delete(shapeId);
+          }
+          updateSelectionUI();
+          renderLayers();
+          return;
+        }
         const shapeEl = e.currentTarget;
         const shapeId = shapeEl.dataset.id;
         e.stopPropagation();
@@ -756,28 +842,27 @@
             if (!sObj) return;
             const dx = parseInt(sObj.element.style.left) - parseInt(shapeEl.style.left);
             const dy = parseInt(sObj.element.style.top) - parseInt(shapeEl.style.top);
-            sObj.element.style.left = (left + dx) + "px";
-            sObj.element.style.top = (top + dy) + "px";
+            sObj.element.style.left = (left + dx) + 'px';
+            sObj.element.style.top = (top + dy) + 'px';
           });
         }
 
         function mouseUp() {
-          document.removeEventListener("mousemove", mouseMove);
-          document.removeEventListener("mouseup", mouseUp);
+          document.removeEventListener('mousemove', mouseMove);
+          document.removeEventListener('mouseup', mouseUp);
         }
 
-        document.addEventListener("mousemove", mouseMove);
-        document.addEventListener("mouseup", mouseUp);
+        document.addEventListener('mousemove', mouseMove);
+        document.addEventListener('mouseup', mouseUp);
       }
 
-      // RESIZE
       function addResizeHandle(shapeEl) {
-        if (shapeEl.querySelector(".resize-handle")) return;
-        const resize = document.createElement("div");
-        resize.classList.add("resize-handle");
+        if (shapeEl.querySelector('.resize-handle')) return;
+        const resize = document.createElement('div');
+        resize.classList.add('resize-handle');
         shapeEl.appendChild(resize);
 
-        resize.addEventListener("mousedown", e => {
+        resize.addEventListener('mousedown', e => {
           e.stopPropagation();
           let initialX = e.clientX;
           let initialY = e.clientY;
@@ -792,11 +877,11 @@
             let newWidth = initialW + deltaX;
             let newHeight = initialH + deltaY;
             if (newWidth < 0) {
-              shapeEl.style.left = (shapeLeft + newWidth) + "px";
+              shapeEl.style.left = (shapeLeft + newWidth) + 'px';
               newWidth = Math.abs(newWidth);
             }
             if (newHeight < 0) {
-              shapeEl.style.top = (shapeTop + newHeight) + "px";
+              shapeEl.style.top = (shapeTop + newHeight) + 'px';
               newHeight = Math.abs(newHeight);
             }
             if (ev.shiftKey) {
@@ -811,28 +896,27 @@
               newWidth = snap(newWidth, 20);
               newHeight = snap(newHeight, 20);
             }
-            shapeEl.style.width = newWidth + "px";
-            shapeEl.style.height = newHeight + "px";
+            shapeEl.style.width = newWidth + 'px';
+            shapeEl.style.height = newHeight + 'px';
           }
 
           function onMouseUp() {
-            document.removeEventListener("mousemove", onMouseMove);
-            document.removeEventListener("mouseup", onMouseUp);
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
           }
 
-          document.addEventListener("mousemove", onMouseMove);
-          document.addEventListener("mouseup", onMouseUp);
+          document.addEventListener('mousemove', onMouseMove);
+          document.addEventListener('mouseup', onMouseUp);
         });
       }
 
-      // ROTATE
       function addRotateHandle(shapeEl) {
-        if (shapeEl.querySelector(".rotate-handle")) return;
-        const rotate = document.createElement("div");
-        rotate.classList.add("rotate-handle");
+        if (shapeEl.querySelector('.rotate-handle')) return;
+        const rotate = document.createElement('div');
+        rotate.classList.add('rotate-handle');
         shapeEl.appendChild(rotate);
 
-        rotate.addEventListener("mousedown", e => {
+        rotate.addEventListener('mousedown', e => {
           e.stopPropagation();
           const rect = canvas.getBoundingClientRect();
           const centerX = shapeEl.offsetLeft + shapeEl.offsetWidth / 2;
@@ -848,25 +932,24 @@
           }
 
           function onMouseUp() {
-            document.removeEventListener("mousemove", onMouseMove);
-            document.removeEventListener("mouseup", onMouseUp);
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
           }
 
-          document.addEventListener("mousemove", onMouseMove);
-          document.addEventListener("mouseup", onMouseUp);
+          document.addEventListener('mousemove', onMouseMove);
+          document.addEventListener('mouseup', onMouseUp);
         });
       }
 
-      // GROUP / UNGROUP
-      groupBtn.addEventListener("click", () => {
+      groupBtn.addEventListener('click', () => {
         if (selectedShapes.size < 2) return;
         const groupId = generateId();
-        const groupEl = document.createElement("div");
-        groupEl.classList.add("shape");
+        const groupEl = document.createElement('div');
+        groupEl.classList.add('shape');
         groupEl.dataset.id = groupId;
-        groupEl.dataset.isGroup = "true";
-        groupEl.style.position = "absolute";
-        groupEl.style.border = "2px dashed #444";
+        groupEl.dataset.isGroup = 'true';
+        groupEl.style.position = 'absolute';
+        groupEl.style.border = '2px dashed #444';
         canvas.appendChild(groupEl);
 
         let minX = Infinity;
@@ -899,8 +982,8 @@
           const el = s.element;
           const shapeLeft = parseInt(el.style.left) - minX;
           const shapeTop = parseInt(el.style.top) - minY;
-          el.style.left = shapeLeft + "px";
-          el.style.top = shapeTop + "px";
+          el.style.left = shapeLeft + 'px';
+          el.style.top = shapeTop + 'px';
           groupEl.appendChild(el);
         });
 
@@ -908,7 +991,7 @@
         const groupObj = {
           id: groupId,
           element: groupEl,
-          type: "group",
+          type: 'group',
           zIndex: shapes.length + 1,
         };
         shapes.push(groupObj);
@@ -919,21 +1002,21 @@
         renderLayers();
       });
 
-      ungroupBtn.addEventListener("click", () => {
+      ungroupBtn.addEventListener('click', () => {
         if (selectedShapes.size !== 1) return;
         const id = [...selectedShapes][0];
         const shapeObj = shapes.find(s => s.id === id);
-        if (!shapeObj || shapeObj.type !== "group") return;
+        if (!shapeObj || shapeObj.type !== 'group') return;
         const groupEl = shapeObj.element;
         while (groupEl.firstChild) {
           const child = groupEl.firstChild;
-          if (child.classList && child.classList.contains("shape")) {
+          if (child.classList && child.classList.contains('shape')) {
             const offsetLeft = parseInt(groupEl.style.left);
             const offsetTop = parseInt(groupEl.style.top);
             const childLeft = parseInt(child.style.left) + offsetLeft;
             const childTop = parseInt(child.style.top) + offsetTop;
-            child.style.left = childLeft + "px";
-            child.style.top = childTop + "px";
+            child.style.left = childLeft + 'px';
+            child.style.top = childTop + 'px';
             canvas.appendChild(child);
             const childId = child.dataset.id;
             const cShape = shapes.find(x => x.id === childId);
@@ -941,7 +1024,7 @@
               shapes.push({
                 id: childId,
                 element: child,
-                type: child.classList.contains("circle") ? "circle" : child.classList.contains("shape-text") ? "text" : "rectangle",
+                type: child.classList.contains('circle') ? 'circle' : child.classList.contains('shape-text') ? 'text' : 'rectangle',
                 zIndex: shapes.length + 1,
               });
               child.style.zIndex = shapes.length;
@@ -959,8 +1042,7 @@
         renderLayers();
       });
 
-      // UNDO / REDO
-      undoButton.addEventListener("click", () => {
+      undoButton.addEventListener('click', () => {
         if (shapes.length > 0) {
           const last = shapes.pop();
           redoStack.push(last);
@@ -972,7 +1054,7 @@
         }
       });
 
-      redoButton.addEventListener("click", () => {
+      redoButton.addEventListener('click', () => {
         if (redoStack.length > 0) {
           const shapeObj = redoStack.pop();
           shapes.push(shapeObj);
@@ -981,18 +1063,16 @@
         }
       });
 
-      // EXPORT
-      exportButton.addEventListener("click", () => {
+      exportButton.addEventListener('click', () => {
         const data = `<html>\n<body>\n${canvas.outerHTML}\n</body>\n</html>`;
-        const blob = new Blob([data], { type: "text/html" });
-        const a = document.createElement("a");
+        const blob = new Blob([data], { type: 'text/html' });
+        const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = "drawing.html";
+        a.download = 'drawing.html';
         a.click();
       });
 
-      // DELETE
-      deleteButton.addEventListener("click", () => {
+      deleteButton.addEventListener('click', () => {
         if (selectedShapes.size < 1) return;
         selectedShapes.forEach(sId => {
           const shapeObj = shapes.find(s => s.id === sId);
@@ -1005,64 +1085,82 @@
         renderLayers();
       });
 
-      // COLOR + OPACITY CONTROLS
-      colorPicker.addEventListener("input", e => {
+      colorPicker.addEventListener('input', e => {
         selectedFillColor = e.target.value;
         selectedShapes.forEach(sId => {
           const sObj = shapes.find(obj => obj.id === sId);
-          if (sObj && sObj.type !== "group") {
+          if (sObj && sObj.type !== 'group' && sObj.type !== 'arrow') {
             const rgb = hexToRgb(selectedFillColor) || { r:0, g:0, b:0};
             sObj.element.style.backgroundColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedFillOpacity})`;
           }
         });
       });
 
-      fillOpacityRange.addEventListener("input", e => {
+      fillOpacityRange.addEventListener('input', e => {
         selectedFillOpacity = safeParseFloat(e.target.value, 1);
         selectedShapes.forEach(sId => {
           const sObj = shapes.find(obj => obj.id === sId);
-          if (sObj && sObj.type !== "group") {
+          if (sObj && sObj.type !== 'group' && sObj.type !== 'arrow') {
             const fillRgb = hexToRgb(selectedFillColor) || {r:0,g:0,b:0};
             sObj.element.style.backgroundColor = `rgba(${fillRgb.r}, ${fillRgb.g}, ${fillRgb.b}, ${selectedFillOpacity})`;
           }
         });
       });
 
-      borderColorPicker.addEventListener("input", e => {
+      borderColorPicker.addEventListener('input', e => {
         selectedBorderColor = e.target.value;
         selectedShapes.forEach(sId => {
           const sObj = shapes.find(obj => obj.id === sId);
-          if (sObj && sObj.type !== "group") {
-            const rgb = hexToRgb(selectedBorderColor) || {r:0,g:0,b:0};
-            sObj.element.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
+          if (sObj && sObj.type !== 'group') {
+            if (sObj.type === 'arrow') {
+              sObj.element.style.border = `2px solid ${selectedBorderColor}`;
+            } else {
+              const rgb = hexToRgb(selectedBorderColor) || {r:0,g:0,b:0};
+              sObj.element.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
+            }
           }
         });
       });
 
-      borderOpacityRange.addEventListener("input", e => {
+      borderOpacityRange.addEventListener('input', e => {
         selectedBorderOpacity = safeParseFloat(e.target.value, 1);
         selectedShapes.forEach(sId => {
           const sObj = shapes.find(obj => obj.id === sId);
-          if (sObj && sObj.type !== "group") {
-            const rgb = hexToRgb(selectedBorderColor) || {r:0,g:0,b:0};
-            sObj.element.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
+          if (sObj && sObj.type !== 'group') {
+            if (sObj.type === 'arrow') {
+              // arrow is just border color
+              const rgb = hexToRgb(selectedBorderColor) || {r:0,g:0,b:0};
+              sObj.element.style.border = `${selectedBorderWidth}px solid rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
+            } else {
+              const rgb = hexToRgb(selectedBorderColor) || {r:0,g:0,b:0};
+              sObj.element.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
+            }
           }
         });
       });
 
-      borderWidthInput.addEventListener("input", e => {
+      borderWidthInput.addEventListener('input', e => {
         selectedBorderWidth = parseInt(e.target.value);
         selectedShapes.forEach(sId => {
           const sObj = shapes.find(obj => obj.id === sId);
-          if (sObj && sObj.type !== "group") {
-            sObj.element.style.borderWidth = selectedBorderWidth + "px";
+          if (sObj && sObj.type !== 'group') {
+            if (sObj.type === 'arrow') {
+              const rgb = hexToRgb(selectedBorderColor) || {r:0,g:0,b:0};
+              sObj.element.style.border = `${selectedBorderWidth}px solid rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
+            } else {
+              sObj.element.style.borderWidth = selectedBorderWidth + 'px';
+            }
           }
         });
       });
 
-      // DRAW
-      canvas.addEventListener("mousedown", e => {
-        if (selectedShapeType === "text") {
+      canvas.addEventListener('mousedown', e => {
+        if (selectedShapeType === 'pointer') {
+          return;
+        } else if (selectedShapeType === 'arrow') {
+          createArrowShape(e);
+          return;
+        } else if (selectedShapeType === 'text') {
           createTextShape(e);
           return;
         }
@@ -1071,13 +1169,15 @@
         startY = e.clientY - rect.top;
         isDrawing = true;
         currentShape = createNewShape();
-        canvas.appendChild(currentShape.element);
-        selectedShapes.clear();
-        selectedShapes.add(currentShape.id);
-        updateSelectionUI();
+        if (currentShape) {
+          canvas.appendChild(currentShape.element);
+          selectedShapes.clear();
+          selectedShapes.add(currentShape.id);
+          updateSelectionUI();
+        }
       });
 
-      canvas.addEventListener("mousemove", e => {
+      canvas.addEventListener('mousemove', e => {
         if (!isDrawing || !currentShape) return;
         const rect = canvas.getBoundingClientRect();
         let width = (e.clientX - rect.left) - parseInt(currentShape.element.style.left);
@@ -1086,14 +1186,14 @@
           width = snap(width, 20);
           height = snap(height, 20);
         }
-        currentShape.element.style.width = width + "px";
-        currentShape.element.style.height = height + "px";
-        if (currentShape.type === "circle") {
-          currentShape.element.style.borderRadius = "50%";
+        currentShape.element.style.width = width + 'px';
+        currentShape.element.style.height = height + 'px';
+        if (currentShape.type === 'circle') {
+          currentShape.element.style.borderRadius = '50%';
         }
       });
 
-      canvas.addEventListener("mouseup", e => {
+      canvas.addEventListener('mouseup', e => {
         if (!isDrawing) return;
         isDrawing = false;
         if (currentShape) {
@@ -1102,12 +1202,12 @@
           let shapeW = parseInt(currentShape.element.style.width);
           let shapeH = parseInt(currentShape.element.style.height);
           if (shapeW < 0) {
-            currentShape.element.style.left = (shapeLeft + shapeW) + "px";
-            currentShape.element.style.width = Math.abs(shapeW) + "px";
+            currentShape.element.style.left = (shapeLeft + shapeW) + 'px';
+            currentShape.element.style.width = Math.abs(shapeW) + 'px';
           }
           if (shapeH < 0) {
-            currentShape.element.style.top = (shapeTop + shapeH) + "px";
-            currentShape.element.style.height = Math.abs(shapeH) + "px";
+            currentShape.element.style.top = (shapeTop + shapeH) + 'px';
+            currentShape.element.style.height = Math.abs(shapeH) + 'px';
           }
           addResizeHandle(currentShape.element);
           addRotateHandle(currentShape.element);
