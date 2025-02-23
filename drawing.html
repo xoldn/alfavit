@@ -18,7 +18,7 @@
       height: 100vh;
     }
     .sidebar {
-      width: 280px;
+      width: 300px;
       background-color: #ffffff;
       border-right: 1px solid #ccc;
       display: flex;
@@ -145,6 +145,7 @@
       border: 1px solid #ccc;
       border-radius: 4px;
       padding: 8px;
+      margin-bottom: 10px;
     }
     .layer-item {
       padding: 4px 8px;
@@ -152,18 +153,27 @@
       background: #eee;
       border-radius: 4px;
       cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
     .layer-item.selected {
       background: #d0ebff;
       outline: 1px solid #409eff;
     }
-    .layer-buttons {
+    .layer-controls {
       display: flex;
       gap: 4px;
-      margin-top: 4px;
     }
-    .group-btn {
-      margin-bottom: 10px;
+    .layer-btn {
+      background: #ccc;
+      border: none;
+      padding: 2px 4px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .layer-btn:hover {
+      background: #bbb;
     }
   </style>
 </head>
@@ -180,8 +190,16 @@
       <input type="color" id="colorPicker" value="#ff0000" />
     </div>
     <div class="form-group">
-      <label for="opacityRange">Opacity</label>
-      <input type="range" id="opacityRange" min="0" max="1" step="0.1" value="1" />
+      <label for="fillOpacityRange">Fill Opacity</label>
+      <input type="range" id="fillOpacityRange" min="0" max="1" step="0.1" value="1" />
+    </div>
+    <div class="form-group">
+      <label for="borderColorPicker">Border Color</label>
+      <input type="color" id="borderColorPicker" value="#000000" />
+    </div>
+    <div class="form-group">
+      <label for="borderOpacityRange">Border Opacity</label>
+      <input type="range" id="borderOpacityRange" min="0" max="1" step="0.1" value="1" />
     </div>
     <div class="form-group">
       <label for="borderWidth">Border Width</label>
@@ -213,10 +231,14 @@
       // DOM Elements
       const canvas = document.querySelector(".canvas");
       const layersList = document.querySelector("#layersList");
+
       const colorPicker = document.querySelector("#colorPicker");
-      const opacityRange = document.querySelector("#opacityRange");
+      const fillOpacityRange = document.querySelector("#fillOpacityRange");
+      const borderColorPicker = document.querySelector("#borderColorPicker");
+      const borderOpacityRange = document.querySelector("#borderOpacityRange");
       const borderWidthInput = document.querySelector("#borderWidth");
       const snapToGridCheckbox = document.querySelector("#snapToGrid");
+
       const groupBtn = document.querySelector("#groupShapes");
       const ungroupBtn = document.querySelector("#ungroupShapes");
 
@@ -227,26 +249,31 @@
 
       // State
       let selectedShapeType = "rectangle";
-      let shapes = []; // Array of shape objects { id, element, type, locked, hidden, parentId }
+      let shapes = []; // Array of shape objects { id, element, type, locked, hidden, zIndex }
       let redoStack = [];
       let isDrawing = false;
       let startX = 0;
       let startY = 0;
       let currentShape = null;
 
-      let selectedColor = "#ff0000";
-      let selectedOpacity = 1;
+      let selectedFillColor = "#ff0000";
+      let selectedFillOpacity = 1;
+      let selectedBorderColor = "#000000";
+      let selectedBorderOpacity = 1;
       let selectedBorderWidth = 1;
 
       // For multi-selection
       let selectedShapes = new Set();
 
-      // History management (for more robust undo/redo)
-      let history = [];
-
       // Generate ID
       function generateId() {
         return "id-" + Math.random().toString(36).substr(2, 9);
+      }
+
+      // Helper: parse float or default
+      function safeParseFloat(val, def = 1) {
+        const parsed = parseFloat(val);
+        return isNaN(parsed) ? def : parsed;
       }
 
       // Rerender layers panel
@@ -254,16 +281,41 @@
         layersList.innerHTML = "";
         // Sort by zIndex descending
         const sorted = [...shapes].sort(
-          (a, b) => parseInt((b.element.style.zIndex || 0)) - parseInt((a.element.style.zIndex || 0))
+          (a, b) => (b.zIndex || 0) - (a.zIndex || 0)
         );
         sorted.forEach(shape => {
-          // If shape is in a group, we might skip or label differently
           const div = document.createElement("div");
           div.classList.add("layer-item");
           if (selectedShapes.has(shape.id)) {
             div.classList.add("selected");
           }
           div.textContent = `${shape.type} (${shape.id})`;
+
+          // add up/down controls
+          const controls = document.createElement("div");
+          controls.classList.add("layer-controls");
+
+          const upBtn = document.createElement("button");
+          upBtn.classList.add("layer-btn");
+          upBtn.textContent = "▲";
+          upBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            bringForward(shape.id);
+          });
+
+          const downBtn = document.createElement("button");
+          downBtn.classList.add("layer-btn");
+          downBtn.textContent = "▼";
+          downBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            sendBackward(shape.id);
+          });
+
+          controls.appendChild(upBtn);
+          controls.appendChild(downBtn);
+
+          div.appendChild(controls);
+
           div.addEventListener("click", (e) => {
             e.stopPropagation();
             if (!e.shiftKey) {
@@ -281,6 +333,33 @@
         });
       }
 
+      // Bring forward / send backward
+      function bringForward(id) {
+        const shapeObj = shapes.find(s => s.id === id);
+        if (!shapeObj) return;
+        shapeObj.zIndex = shapeObj.zIndex + 1;
+        // if collide, shift others
+        updateZIndices();
+        renderLayers();
+      }
+
+      function sendBackward(id) {
+        const shapeObj = shapes.find(s => s.id === id);
+        if (!shapeObj) return;
+        shapeObj.zIndex = Math.max(0, shapeObj.zIndex - 1);
+        updateZIndices();
+        renderLayers();
+      }
+
+      function updateZIndices() {
+        // Sort shapes by zIndex ascending, reassign unique zIndexes
+        shapes.sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+        shapes.forEach((s, i) => {
+          s.zIndex = i + 1;
+          s.element.style.zIndex = s.zIndex;
+        });
+      }
+
       // Update shape selection UI
       function updateSelectionUI() {
         shapes.forEach(s => {
@@ -289,7 +368,8 @@
         shapes.forEach(s => {
           if (selectedShapes.has(s.id)) {
             s.element.classList.add("selected");
-        }});
+          }
+        });
       }
 
       // Tools & UI Listeners
@@ -300,23 +380,49 @@
       });
 
       colorPicker.addEventListener("input", e => {
-        selectedColor = e.target.value;
-        // Update color of selected shapes
+        selectedFillColor = e.target.value;
+        // Update fill color of selected shapes
         selectedShapes.forEach(sId => {
           const sObj = shapes.find(obj => obj.id === sId);
-          if (sObj) {
-            sObj.element.style.backgroundColor = selectedColor;
+          if (sObj && sObj.type !== "group") {
+            sObj.element.style.backgroundColor = selectedFillColor;
           }
         });
       });
 
-      opacityRange.addEventListener("input", e => {
-        selectedOpacity = parseFloat(e.target.value);
-        // Update opacity of selected shapes
+      fillOpacityRange.addEventListener("input", e => {
+        selectedFillOpacity = safeParseFloat(e.target.value, 1);
+        // Update fill opacity of selected shapes (just the background)
         selectedShapes.forEach(sId => {
           const sObj = shapes.find(obj => obj.id === sId);
-          if (sObj) {
-            sObj.element.style.opacity = selectedOpacity;
+          if (sObj && sObj.type !== "group") {
+            sObj.element.style.opacity = selectedFillOpacity;
+          }
+        });
+      });
+
+      borderColorPicker.addEventListener("input", e => {
+        selectedBorderColor = e.target.value;
+        // Update border color of selected shapes
+        selectedShapes.forEach(sId => {
+          const sObj = shapes.find(obj => obj.id === sId);
+          if (sObj && sObj.type !== "group") {
+            const shapeStyle = window.getComputedStyle(sObj.element);
+            sObj.element.style.borderColor = selectedBorderColor;
+          }
+        });
+      });
+
+      borderOpacityRange.addEventListener("input", e => {
+        selectedBorderOpacity = safeParseFloat(e.target.value, 1);
+        // Update border opacity by applying RGBA to borderColor
+        selectedShapes.forEach(sId => {
+          const sObj = shapes.find(obj => obj.id === sId);
+          if (sObj && sObj.type !== "group") {
+            const rgb = hexToRgb(selectedBorderColor);
+            if (rgb) {
+              sObj.element.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
+            }
           }
         });
       });
@@ -326,11 +432,29 @@
         // Update border width of selected shapes
         selectedShapes.forEach(sId => {
           const sObj = shapes.find(obj => obj.id === sId);
-          if (sObj) {
+          if (sObj && sObj.type !== "group") {
             sObj.element.style.borderWidth = selectedBorderWidth + "px";
           }
         });
       });
+
+      function hexToRgb(hex) {
+        // Remove # if present
+        hex = hex.replace(/^#/, "");
+        // 3-digit or 6-digit
+        if (hex.length === 3) {
+          const r = parseInt(hex[0] + hex[0], 16);
+          const g = parseInt(hex[1] + hex[1], 16);
+          const b = parseInt(hex[2] + hex[2], 16);
+          return { r, g, b };
+        } else if (hex.length === 6) {
+          const r = parseInt(hex.substring(0, 2), 16);
+          const g = parseInt(hex.substring(2, 4), 16);
+          const b = parseInt(hex.substring(4, 6), 16);
+          return { r, g, b };
+        }
+        return null;
+      }
 
       // Snap to grid helper
       function snap(value, gridSize) {
@@ -345,12 +469,14 @@
         if (selectedShapeType === "circle") {
           el.classList.add("circle");
         }
-        el.style.backgroundColor = selectedColor;
-        el.style.opacity = selectedOpacity;
+        const rgb = hexToRgb(selectedBorderColor) || { r: 0, g: 0, b: 0};
+        el.style.backgroundColor = selectedFillColor;
+        el.style.opacity = selectedFillOpacity;
         el.style.borderWidth = selectedBorderWidth + "px";
         el.style.borderStyle = "solid";
-        el.style.borderColor = "black";
-        el.style.zIndex = shapes.length + 1;
+        el.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
+        el.style.position = "absolute";
+        // We'll assign zIndex after we push to shapes array
         el.dataset.id = id;
         el.dataset.isGroup = "false";
         el.style.left = startX + "px";
@@ -363,9 +489,12 @@
           element: el,
           type: selectedShapeType,
           locked: false,
-          hidden: false
+          hidden: false,
+          zIndex: shapes.length + 1,
         };
         shapes.push(shapeObj);
+        // Apply zIndex
+        el.style.zIndex = shapeObj.zIndex;
         redoStack = [];
         return shapeObj;
       }
@@ -379,11 +508,12 @@
         el.classList.add("shape", "shape-text");
         el.style.left = x + "px";
         el.style.top = y + "px";
-        el.style.backgroundColor = selectedColor;
-        el.style.opacity = selectedOpacity;
+        const rgb = hexToRgb(selectedBorderColor) || { r: 0, g: 0, b: 0};
+        el.style.backgroundColor = selectedFillColor;
+        el.style.opacity = selectedFillOpacity;
         el.style.borderWidth = selectedBorderWidth + "px";
         el.style.borderStyle = "solid";
-        el.style.borderColor = "black";
+        el.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
         el.style.zIndex = shapes.length + 1;
         el.style.minWidth = "50px";
         el.style.minHeight = "20px";
@@ -399,9 +529,9 @@
           type: "text",
           locked: false,
           hidden: false,
+          zIndex: shapes.length + 1,
         };
         shapes.push(shapeObj);
-        redoStack = [];
         selectedShapes.clear();
         selectedShapes.add(id);
         updateSelectionUI();
@@ -424,9 +554,7 @@
         if (!e.shiftKey && !selectedShapes.has(shapeId)) {
           selectedShapes.clear();
         }
-        if (selectedShapes.has(shapeId)) {
-          // do nothing
-        } else {
+        if (!selectedShapes.has(shapeId)) {
           selectedShapes.add(shapeId);
         }
         updateSelectionUI();
@@ -532,8 +660,6 @@
         rotate.classList.add("rotate-handle");
         shapeEl.appendChild(rotate);
 
-        let currentAngle = 0;
-
         rotate.addEventListener("mousedown", e => {
           e.stopPropagation();
           const rect = canvas.getBoundingClientRect();
@@ -547,7 +673,6 @@
             const dx = mouseX - centerX;
             const dy = mouseY - centerY;
             let angle = Math.atan2(dy, dx) * (180 / Math.PI);
-            currentAngle = angle;
             shapeEl.style.transform = `translate(0,0) rotate(${angle}deg)`;
           }
 
@@ -561,15 +686,15 @@
         });
       }
 
-      // Ungroup + group
+      // Add shape to the shapes array
       function addShape(shapeObj) {
         redoStack = [];
         renderLayers();
       }
 
+      // Group / Ungroup
       groupBtn.addEventListener("click", () => {
         if (selectedShapes.size < 2) return;
-        // We'll create a container shape
         const groupId = generateId();
         const groupEl = document.createElement("div");
         groupEl.classList.add("shape");
@@ -579,7 +704,6 @@
         groupEl.style.width = "0px";
         groupEl.style.height = "0px";
         groupEl.style.border = "2px dashed #444";
-        groupEl.style.zIndex = shapes.length + 1;
         groupEl.dataset.id = groupId;
         groupEl.dataset.isGroup = "true";
         canvas.appendChild(groupEl);
@@ -622,8 +746,10 @@
           id: groupId,
           element: groupEl,
           type: "group",
+          zIndex: shapes.length + 1,
         };
         shapes.push(groupObj);
+        groupEl.style.zIndex = groupObj.zIndex;
         selectedShapes.clear();
         selectedShapes.add(groupId);
         updateSelectionUI();
@@ -645,11 +771,20 @@
             child.style.top = (offsetTop + parseInt(child.style.top)) + "px";
             canvas.appendChild(child);
             const childId = child.dataset.id;
+            const type = child.classList.contains("circle")
+              ? "circle"
+              : child.classList.contains("shape-text")
+                ? "text"
+                : child.dataset.isGroup === "true"
+                  ? "group"
+                  : "rectangle";
             shapes.push({
               id: childId,
               element: child,
-              type: child.dataset.isGroup === "true" ? "group" : (child.classList.contains("circle") ? "circle" : (child.classList.contains("shape-text") ? "text" : "rectangle"))
+              type,
+              zIndex: shapes.length + 1,
             });
+            child.style.zIndex = shapes.length;
           } else {
             groupEl.removeChild(child);
           }
@@ -661,11 +796,6 @@
       });
 
       // Undo / Redo logic
-      function saveHistory() {
-        // For robust undo/redo, we would clone the entire shapes array, or store patches
-        // This is a simplified approach
-      }
-
       undoButton.addEventListener("click", () => {
         if (shapes.length > 0) {
           const last = shapes.pop();
@@ -683,10 +813,12 @@
           const shapeObj = redoStack.pop();
           shapes.push(shapeObj);
           canvas.appendChild(shapeObj.element);
+          updateZIndices();
           renderLayers();
         }
       });
 
+      // Export
       exportButton.addEventListener("click", () => {
         const data = `<html>\n<body>\n${canvas.outerHTML}\n</body>\n</html>`;
         const blob = new Blob([data], { type: "text/html" });
@@ -751,9 +883,9 @@
           addRotateHandle(currentShape.element);
           currentShape = null;
         }
+        updateZIndices();
         renderLayers();
       });
-
     });
   </script>
 </body>
