@@ -1,177 +1,497 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Drawing App</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            background-color: #f4f4f4;
-        }
-        .toolbar {
-            margin-bottom: 10px;
-        }
-        .canvas {
-            width: 800px;
-            height: 500px;
-            border: 2px dashed #333;
-            background-color: white;
-            position: relative;
-            margin: auto;
-        }
-        .shape {
-            position: absolute;
-            cursor: grab;
-            border: 1px solid black;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .circle {
-            border-radius: 50%;
-        }
-        .icon {
-            width: 40px;
-            height: 40px;
-            display: inline-block;
-            margin: 5px;
-            cursor: pointer;
-            border: 2px solid black;
-        }
-        .icon.rectangle {
-            background-color: lightgray;
-        }
-        .icon.circle {
-            background-color: lightgray;
-            border-radius: 50%;
-        }
-        .resize-handle {
-            width: 10px;
-            height: 10px;
-            background: black;
-            position: absolute;
-            right: -5px;
-            bottom: -5px;
-            cursor: nwse-resize;
-        }
-        .selected {
-            outline: 2px dashed blue;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Drawing App Pro</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f2f2f2;
+      display: flex;
+      flex-direction: row;
+      height: 100vh;
+    }
+
+    /* Sidebar styles */
+    .sidebar {
+      width: 250px;
+      background-color: #ffffff;
+      border-right: 1px solid #ccc;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+    }
+
+    .sidebar h2 {
+      margin-top: 0;
+    }
+
+    .form-group {
+      margin-bottom: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .form-group label {
+      margin-bottom: 4px;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .icon {
+      width: 40px;
+      height: 40px;
+      border: 2px solid #666;
+      cursor: pointer;
+      border-radius: 4px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      user-select: none;
+    }
+
+    .icon.rectangle::before {
+      content: "";
+      width: 60%;
+      height: 40%;
+      background: #ccc;
+      display: block;
+    }
+
+    .icon.circle::before {
+      content: "";
+      width: 50%;
+      height: 50%;
+      background: #ccc;
+      border-radius: 50%;
+      display: block;
+    }
+
+    .canvas-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .canvas {
+      width: 900px;
+      height: 600px;
+      border: 1px solid #999;
+      background-color: #fff;
+      position: relative;
+    }
+
+    .shape {
+      position: absolute;
+      cursor: move;
+      border: 2px solid black;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-sizing: border-box;
+      transform-origin: center center;
+    }
+
+    .circle {
+      border-radius: 50%;
+    }
+
+    .resize-handle {
+      width: 10px;
+      height: 10px;
+      background: #333;
+      position: absolute;
+      right: -5px;
+      bottom: -5px;
+      cursor: nwse-resize;
+    }
+
+    .rotate-handle {
+      width: 10px;
+      height: 10px;
+      background: #333;
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      cursor: grab;
+      border-radius: 50%;
+    }
+
+    /* Active selection outline */
+    .selected {
+      outline: 2px dashed blue;
+    }
+
+    /* Layers list */
+    .layers {
+      flex: 1;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 8px;
+    }
+
+    .layers h3 {
+      margin-top: 0;
+    }
+
+    .layer-item {
+      padding: 4px 8px;
+      margin: 4px 0;
+      background: #eee;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .layer-item.selected {
+      background: #d0ebff;
+      outline: 1px solid #409eff;
+    }
+  </style>
 </head>
 <body>
-    <h1>Drawing App</h1>
+  <div class="sidebar">
+    <h2>Tools</h2>
     <div class="toolbar">
-        <input type="color" id="colorPicker" value="#ff0000" />
-        <input type="range" id="opacityRange" min="0" max="1" step="0.1" value="1">
-        <input type="number" id="borderWidth" min="1" max="10" value="1">
-        <button id="undo">Undo</button>
-        <button id="redo">Redo</button>
-        <button id="export">Export</button>
-        <div class="icon rectangle" data-shape="rectangle"></div>
-        <div class="icon circle" data-shape="circle"></div>
+      <div class="icon rectangle" data-shape="rectangle" title="Rectangle"></div>
+      <div class="icon circle" data-shape="circle" title="Circle"></div>
     </div>
+    <div class="form-group">
+      <label for="colorPicker">Fill Color</label>
+      <input type="color" id="colorPicker" value="#ff0000" />
+    </div>
+    <div class="form-group">
+      <label for="opacityRange">Opacity</label>
+      <input type="range" id="opacityRange" min="0" max="1" step="0.1" value="1" />
+    </div>
+    <div class="form-group">
+      <label for="borderWidth">Border Width</label>
+      <input type="number" id="borderWidth" min="0" max="20" value="1" />
+    </div>
+    <div class="form-group">
+      <button id="undo">Undo</button>
+      <button id="redo">Redo</button>
+    </div>
+    <div class="form-group">
+      <button id="export">Export</button>
+    </div>
+    <h3>Layers</h3>
+    <div class="layers" id="layersList"></div>
+  </div>
+  <div class="canvas-container">
     <div class="canvas"></div>
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            const canvas = document.querySelector(".canvas");
-            const colorPicker = document.querySelector("#colorPicker");
-            const opacityRange = document.querySelector("#opacityRange");
-            const borderWidthInput = document.querySelector("#borderWidth");
-            const undoButton = document.querySelector("#undo");
-            const redoButton = document.querySelector("#redo");
-            const exportButton = document.querySelector("#export");
-            const shapeIcons = document.querySelectorAll(".icon");
-            let selectedColor = "#ff0000";
-            let selectedOpacity = "1";
-            let selectedBorderWidth = "1";
-            let selectedShape = "rectangle";
-            let isDrawing = false;
-            let startX, startY;
-            let currentShape = null;
-            let history = [];
-            let redoStack = [];
+  </div>
 
-            colorPicker.addEventListener("input", (event) => {
-                selectedColor = event.target.value;
-            });
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const canvas = document.querySelector(".canvas");
+      const layersList = document.querySelector("#layersList");
 
-            opacityRange.addEventListener("input", (event) => {
-                selectedOpacity = event.target.value;
-            });
+      const colorPicker = document.querySelector("#colorPicker");
+      const opacityRange = document.querySelector("#opacityRange");
+      const borderWidthInput = document.querySelector("#borderWidth");
 
-            borderWidthInput.addEventListener("input", (event) => {
-                selectedBorderWidth = event.target.value;
-            });
+      const undoButton = document.querySelector("#undo");
+      const redoButton = document.querySelector("#redo");
+      const exportButton = document.querySelector("#export");
+      const shapeIcons = document.querySelectorAll(".icon");
 
-            shapeIcons.forEach(icon => {
-                icon.addEventListener("click", () => {
-                    selectedShape = icon.getAttribute("data-shape");
-                });
-            });
+      let selectedShapeType = "rectangle";
+      let shapes = [];
+      let history = [];
+      let redoStack = [];
 
-            canvas.addEventListener("mousedown", (event) => {
-                const rect = canvas.getBoundingClientRect();
-                startX = event.clientX - rect.left;
-                startY = event.clientY - rect.top;
-                isDrawing = true;
+      let isDrawing = false;
+      let startX = 0;
+      let startY = 0;
+      let currentShape = null;
+      let currentRotation = 0;
 
-                currentShape = document.createElement("div");
-                currentShape.classList.add("shape", selectedShape);
-                currentShape.style.left = `${startX}px`;
-                currentShape.style.top = `${startY}px`;
-                currentShape.style.backgroundColor = selectedColor;
-                currentShape.style.opacity = selectedOpacity;
-                currentShape.style.border = `${selectedBorderWidth}px solid black`;
-                currentShape.style.width = `0px`;
-                currentShape.style.height = `0px`;
-                canvas.appendChild(currentShape);
-                history.push(currentShape);
-            });
+      let selectedColor = "#ff0000";
+      let selectedOpacity = 1;
+      let selectedBorderWidth = 1;
 
-            canvas.addEventListener("mousemove", (event) => {
-                if (!isDrawing) return;
-                const rect = canvas.getBoundingClientRect();
-                const width = event.clientX - rect.left - startX;
-                const height = event.clientY - rect.top - startY;
-                currentShape.style.width = `${width}px`;
-                currentShape.style.height = `${height}px`;
-                if (selectedShape === "circle") {
-                    currentShape.style.borderRadius = "50%";
-                }
-            });
+      // shapeData: { id, element, type, zIndex }
 
-            canvas.addEventListener("mouseup", () => {
-                isDrawing = false;
-            });
+      function generateId() {
+        return "id-" + Math.random().toString(36).substr(2, 9);
+      }
 
-            undoButton.addEventListener("click", () => {
-                if (history.length > 0) {
-                    const shape = history.pop();
-                    redoStack.push(shape);
-                    shape.remove();
-                }
-            });
-
-            redoButton.addEventListener("click", () => {
-                if (redoStack.length > 0) {
-                    const shape = redoStack.pop();
-                    canvas.appendChild(shape);
-                    history.push(shape);
-                }
-            });
-
-            exportButton.addEventListener("click", () => {
-                const data = canvas.innerHTML;
-                const blob = new Blob([data], { type: "text/html" });
-                const a = document.createElement("a");
-                a.href = URL.createObjectURL(blob);
-                a.download = "drawing.html";
-                a.click();
-            });
+      // Rerender layers panel
+      function renderLayers() {
+        layersList.innerHTML = "";
+        // Sort shapes by z-index descending
+        let sorted = [...shapes].sort((a, b) => parseInt(b.element.style.zIndex || 0) - parseInt(a.element.style.zIndex || 0));
+        sorted.forEach(shape => {
+          const div = document.createElement("div");
+          div.classList.add("layer-item");
+          if (shape.element.classList.contains("selected")) {
+            div.classList.add("selected");
+          }
+          div.textContent = `${shape.type} (${shape.id})`;
+          div.addEventListener("click", () => {
+            selectShape(shape.id);
+          });
+          layersList.appendChild(div);
         });
-    </script>
+      }
+
+      // De-select all shapes, select one shape by id
+      function selectShape(id) {
+        shapes.forEach(s => s.element.classList.remove("selected"));
+        let shapeObj = shapes.find(s => s.id === id);
+        if (shapeObj) {
+          shapeObj.element.classList.add("selected");
+        }
+        renderLayers();
+      }
+
+      shapeIcons.forEach(icon => {
+        icon.addEventListener("click", () => {
+          selectedShapeType = icon.getAttribute("data-shape");
+        });
+      });
+
+      colorPicker.addEventListener("input", e => {
+        selectedColor = e.target.value;
+      });
+
+      opacityRange.addEventListener("input", e => {
+        selectedOpacity = parseFloat(e.target.value);
+      });
+
+      borderWidthInput.addEventListener("input", e => {
+        selectedBorderWidth = parseInt(e.target.value);
+      });
+
+      // Undo / Redo logic
+      undoButton.addEventListener("click", () => {
+        if (shapes.length > 0) {
+          const last = shapes.pop();
+          redoStack.push(last);
+          last.element.remove();
+          renderLayers();
+        }
+      });
+
+      redoButton.addEventListener("click", () => {
+        if (redoStack.length > 0) {
+          const shapeObj = redoStack.pop();
+          shapes.push(shapeObj);
+          canvas.appendChild(shapeObj.element);
+          renderLayers();
+        }
+      });
+
+      exportButton.addEventListener("click", () => {
+        // We'll create an SVG or just export the HTML
+        const data = canvas.outerHTML;
+        const blob = new Blob([data], { type: "text/html" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "drawing.html";
+        a.click();
+      });
+
+      // Drawing logic
+      canvas.addEventListener("mousedown", e => {
+        // If clicked on shape? We'll check if we want to draw or move?
+        // For now, let's assume we are drawing a new shape.
+        const rect = canvas.getBoundingClientRect();
+        startX = e.clientX - rect.left;
+        startY = e.clientY - rect.top;
+        isDrawing = true;
+
+        // Create shape
+        const shapeEl = document.createElement("div");
+        shapeEl.classList.add("shape", selectedShapeType);
+        shapeEl.style.left = startX + "px";
+        shapeEl.style.top = startY + "px";
+        shapeEl.style.backgroundColor = selectedColor;
+        shapeEl.style.opacity = selectedOpacity;
+        shapeEl.style.borderWidth = selectedBorderWidth + "px";
+        shapeEl.style.borderStyle = "solid";
+        shapeEl.style.borderColor = "black";
+        shapeEl.style.zIndex = shapes.length + 1;
+
+        const id = generateId();
+        shapeEl.dataset.id = id;
+
+        // Add to canvas
+        canvas.appendChild(shapeEl);
+
+        currentShape = {
+          id,
+          element: shapeEl,
+          type: selectedShapeType,
+        };
+
+        shapes.push(currentShape);
+        redoStack = [];
+        // auto select
+        selectShape(id);
+
+        // Add event listeners for shape
+        addShapeEventListeners(shapeEl);
+      });
+
+      canvas.addEventListener("mousemove", e => {
+        if (!isDrawing || !currentShape) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const width = (e.clientX - rect.left) - parseInt(currentShape.element.style.left);
+        const height = (e.clientY - rect.top) - parseInt(currentShape.element.style.top);
+        currentShape.element.style.width = width + "px";
+        currentShape.element.style.height = height + "px";
+        if (currentShape.type === "circle") {
+          currentShape.element.style.borderRadius = "50%";
+        }
+      });
+
+      canvas.addEventListener("mouseup", e => {
+        if (!isDrawing) return;
+        isDrawing = false;
+        if (currentShape) {
+          addResizeHandle(currentShape.element);
+          addRotateHandle(currentShape.element);
+        }
+        currentShape = null;
+        renderLayers();
+      });
+
+      // Add shape event listeners
+      function addShapeEventListeners(el) {
+        // For moving
+        el.addEventListener("mousedown", shapeMouseDown);
+      }
+
+      function shapeMouseDown(e) {
+        // If we are drawing new shape, skip.
+        if (isDrawing) return;
+
+        e.stopPropagation();
+        const shapeEl = e.currentTarget;
+        selectShape(shapeEl.dataset.id);
+
+        let offsetX = e.offsetX;
+        let offsetY = e.offsetY;
+
+        function mouseMove(ev) {
+          shapeEl.style.left = (ev.clientX - canvas.getBoundingClientRect().left - offsetX) + "px";
+          shapeEl.style.top = (ev.clientY - canvas.getBoundingClientRect().top - offsetY) + "px";
+        }
+
+        function mouseUp() {
+          document.removeEventListener("mousemove", mouseMove);
+          document.removeEventListener("mouseup", mouseUp);
+        }
+
+        document.addEventListener("mousemove", mouseMove);
+        document.addEventListener("mouseup", mouseUp);
+      }
+
+      // Adds a resize handle
+      function addResizeHandle(shapeEl) {
+        // If already has one, skip
+        if (shapeEl.querySelector(".resize-handle")) return;
+
+        const resize = document.createElement("div");
+        resize.classList.add("resize-handle");
+        shapeEl.appendChild(resize);
+
+        resize.addEventListener("mousedown", e => {
+          e.stopPropagation();
+          let initialX = e.clientX;
+          let initialY = e.clientY;
+          let initialW = parseInt(shapeEl.style.width);
+          let initialH = parseInt(shapeEl.style.height);
+
+          function onMouseMove(ev) {
+            const deltaX = ev.clientX - initialX;
+            const deltaY = ev.clientY - initialY;
+
+            let newWidth = initialW + deltaX;
+            let newHeight = initialH + deltaY;
+
+            // If SHIFT is held, keep aspect ratio
+            if (ev.shiftKey) {
+              const aspect = initialW / initialH;
+              if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                newHeight = newWidth / aspect;
+              } else {
+                newWidth = newHeight * aspect;
+              }
+            }
+
+            shapeEl.style.width = newWidth + "px";
+            shapeEl.style.height = newHeight + "px";
+          }
+
+          function onMouseUp() {
+            document.removeEventListener("mousemove", onMouseMove);
+            document.removeEventListener("mouseup", onMouseUp);
+          }
+
+          document.addEventListener("mousemove", onMouseMove);
+          document.addEventListener("mouseup", onMouseUp);
+        });
+      }
+
+      // Adds a rotation handle
+      function addRotateHandle(shapeEl) {
+        // If already has one, skip
+        if (shapeEl.querySelector(".rotate-handle")) return;
+
+        const rotate = document.createElement("div");
+        rotate.classList.add("rotate-handle");
+        shapeEl.appendChild(rotate);
+
+        let currentAngle = 0;
+
+        rotate.addEventListener("mousedown", e => {
+          e.stopPropagation();
+          let centerX = shapeEl.offsetLeft + shapeEl.offsetWidth / 2;
+          let centerY = shapeEl.offsetTop + shapeEl.offsetHeight / 2;
+
+          function onMouseMove(ev) {
+            const mouseX = ev.clientX - canvas.getBoundingClientRect().left;
+            const mouseY = ev.clientY - canvas.getBoundingClientRect().top;
+
+            const dx = mouseX - centerX;
+            const dy = mouseY - centerY;
+            let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+            currentAngle = angle;
+            shapeEl.style.transform = `translate(0,0) rotate(${angle}deg)`;
+          }
+
+          function onMouseUp() {
+            document.removeEventListener("mousemove", onMouseMove);
+            document.removeEventListener("mouseup", onMouseUp);
+          }
+
+          document.addEventListener("mousemove", onMouseMove);
+          document.addEventListener("mouseup", onMouseUp);
+        });
+      }
+    });
+  </script>
 </body>
 </html>
