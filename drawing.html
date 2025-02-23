@@ -27,7 +27,7 @@
         .shape {
             position: absolute;
             cursor: grab;
-            border: 1px solid black;
+            border: 2px solid black;
         }
         .circle {
             border-radius: 50%;
@@ -61,7 +61,11 @@
 <body>
     <h1>Drawing App</h1>
     <div class="toolbar">
-        <input type="color" id="colorPicker" value="#ff0000" />
+        <input type="color" id="borderColorPicker" value="#000000" />
+        <input type="range" id="borderWidth" min="1" max="10" value="2" />
+        <label>
+            <input type="checkbox" id="transparentFill" /> Transparent Fill
+        </label>
         <div class="icon rectangle" data-shape="rectangle"></div>
         <div class="icon circle" data-shape="circle"></div>
     </div>
@@ -69,16 +73,23 @@
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             const canvas = document.querySelector(".canvas");
-            const colorPicker = document.querySelector("#colorPicker");
+            const borderColorPicker = document.querySelector("#borderColorPicker");
+            const borderWidthPicker = document.querySelector("#borderWidth");
+            const transparentFillCheckbox = document.querySelector("#transparentFill");
             const shapeIcons = document.querySelectorAll(".icon");
-            let selectedColor = "#ff0000";
+            let selectedBorderColor = "#000000";
+            let selectedBorderWidth = "2";
             let selectedShape = "rectangle";
             let isDrawing = false;
             let startX, startY;
             let currentShape = null;
 
-            colorPicker.addEventListener("input", (event) => {
-                selectedColor = event.target.value;
+            borderColorPicker.addEventListener("input", (event) => {
+                selectedBorderColor = event.target.value;
+            });
+
+            borderWidthPicker.addEventListener("input", (event) => {
+                selectedBorderWidth = event.target.value;
             });
 
             shapeIcons.forEach(icon => {
@@ -97,10 +108,13 @@
                 currentShape.classList.add("shape", selectedShape);
                 currentShape.style.left = `${startX}px`;
                 currentShape.style.top = `${startY}px`;
-                currentShape.style.backgroundColor = selectedColor;
-                currentShape.style.width = `0px`;
-                currentShape.style.height = `0px`;
+                currentShape.style.borderColor = selectedBorderColor;
+                currentShape.style.borderWidth = `${selectedBorderWidth}px`;
+                currentShape.style.borderStyle = "solid";
+                currentShape.style.backgroundColor = transparentFillCheckbox.checked ? "transparent" : "white";
                 canvas.appendChild(currentShape);
+
+                currentShape.addEventListener("mousedown", dragStart);
             });
 
             canvas.addEventListener("mousemove", (event) => {
@@ -149,6 +163,25 @@
                     document.addEventListener("mousemove", resize);
                     document.addEventListener("mouseup", stopResize);
                 });
+            }
+
+            function dragStart(event) {
+                const shape = event.target;
+                let offsetX = event.clientX - shape.offsetLeft;
+                let offsetY = event.clientY - shape.offsetTop;
+
+                function drag(event) {
+                    shape.style.left = `${event.clientX - offsetX}px`;
+                    shape.style.top = `${event.clientY - offsetY}px`;
+                }
+
+                function stopDrag() {
+                    document.removeEventListener("mousemove", drag);
+                    document.removeEventListener("mouseup", stopDrag);
+                }
+
+                document.addEventListener("mousemove", drag);
+                document.addEventListener("mouseup", stopDrag);
             }
         });
     </script>
