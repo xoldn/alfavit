@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Drawing App Pro</title>
+
+  <!-- Google API Loader -->
+  <script src="https://apis.google.com/js/api.js"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -175,6 +178,36 @@
     .layer-btn:hover {
       background: #bbb;
     }
+    .form-group#driveControls {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #ccc;
+    }
+    .drive-file {
+      margin: 2px 0;
+      cursor: pointer;
+      padding: 4px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: #f9f9f9;
+    }
+    .drive-file:hover {
+      background: #eee;
+    }
+
+    /* Additional: Delete button style */
+    #deleteShape {
+      background: #f44336;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      cursor: pointer;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+    #deleteShape:hover {
+      background: #e03128;
+    }
   </style>
 </head>
 <body>
@@ -219,15 +252,189 @@
     <div class="form-group">
       <button id="export">Export</button>
     </div>
+    <button id="deleteShape">Delete Shape</button>
+
     <h3>Layers</h3>
     <div class="layers" id="layersList"></div>
+
+    <!-- Drive Controls -->
+    <div class="form-group" id="driveControls">
+      <label>Google Drive Integration</label>
+      <button id="authorize_button">Sign In</button>
+      <button id="signout_button" style="display:none">Sign Out</button>
+      <div id="driveFileList"></div>
+    </div>
   </div>
   <div class="canvas-container">
     <div class="canvas"></div>
   </div>
 
   <script>
+    // ====== Google Drive API Configuration ======
+    // Fill in with your own client ID from Google Cloud Console
+    const CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
+    const API_KEY = "YOUR_API_KEY"; // needed for listing files if using the Drive API
+    const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
+    const SCOPES = "https://www.googleapis.com/auth/drive.file";
+
+    let currentFileId = null; // ID of the file in Drive
+
+    // On load, load the auth2 library
+    function gapiLoaded() {
+      gapi.load('client:auth2', initClient);
+    }
+
+    async function initClient() {
+      await gapi.client.init({
+        apiKey: API_KEY,
+        clientId: CLIENT_ID,
+        discoveryDocs: DISCOVERY_DOCS,
+        scope: SCOPES,
+      });
+      gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
+      updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+      document.getElementById('authorize_button').onclick = handleAuthClick;
+      document.getElementById('signout_button').onclick = handleSignoutClick;
+    }
+
+    function updateSigninStatus(isSignedIn) {
+      const authorizeButton = document.getElementById('authorize_button');
+      const signoutButton = document.getElementById('signout_button');
+      if (isSignedIn) {
+        authorizeButton.style.display = 'none';
+        signoutButton.style.display = 'block';
+        listFiles();
+      } else {
+        authorizeButton.style.display = 'block';
+        signoutButton.style.display = 'none';
+      }
+    }
+
+    function handleAuthClick() {
+      gapi.auth2.getAuthInstance().signIn();
+    }
+
+    function handleSignoutClick() {
+      gapi.auth2.getAuthInstance().signOut();
+      document.getElementById('driveFileList').innerHTML = '';
+    }
+
+    async function listFiles() {
+      // List up to 10 HTML files in Drive (or all user files with 'file' mimeType)
+      try {
+        const response = await gapi.client.drive.files.list({
+          pageSize: 10,
+          fields: "files(id, name)",
+          q: "mimeType != 'application/vnd.google-apps.folder'"
+        });
+        const files = response.result.files;
+        const fileListElem = document.getElementById('driveFileList');
+        fileListElem.innerHTML = '';
+        if (files && files.length > 0) {
+          files.forEach(file => {
+            const div = document.createElement('div');
+            div.classList.add('drive-file');
+            div.textContent = file.name + ' (' + file.id + ')';
+            div.addEventListener('click', () => {
+              loadFromDrive(file.id);
+            });
+            fileListElem.appendChild(div);
+          });
+        } else {
+          fileListElem.innerHTML = 'No files found.';
+        }
+      } catch (error) {
+        console.error('Error listing files', error);
+      }
+    }
+
+    async function loadFromDrive(fileId) {
+      try {
+        const response = await gapi.client.drive.files.get({
+          fileId: fileId,
+          alt: 'media'
+        });
+        const fileContent = response.body;
+        // naive approach: load content into the canvas outerHTML
+        // or parse JSON if needed.
+        document.querySelector('.canvas-container').innerHTML = fileContent;
+        currentFileId = fileId;
+        // Might need re-initialization logic for shape events, etc.
+        alert('File loaded from Drive.');
+      } catch (error) {
+        console.error('Error loading file', error);
+      }
+    }
+
+    async function saveToDrive() {
+      if (!currentFileId) {
+        // create a new file
+        await createFileOnDrive();
+      } else {
+        // update existing
+        await updateFileOnDrive(currentFileId);
+      }
+    }
+
+    async function createFileOnDrive() {
+      try {
+        const contentBlob = new Blob([document.querySelector('.canvas').outerHTML], { type: 'text/html' });
+        const metadata = {
+          name: 'drawing.html',
+          mimeType: 'text/html'
+        };
+
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+        form.append('file', contentBlob);
+
+        const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+          method: 'POST',
+          headers: new Headers({
+            'Authorization': 'Bearer ' + gapi.auth.getToken().access_token
+          }),
+          body: form,
+        });
+        const result = await response.json();
+        currentFileId = result.id;
+        alert('File created on Drive: ' + currentFileId);
+      } catch (error) {
+        console.error('Error creating file', error);
+      }
+    }
+
+    async function updateFileOnDrive(fileId) {
+      try {
+        const contentBlob = new Blob([document.querySelector('.canvas').outerHTML], { type: 'text/html' });
+        const metadata = {
+          name: 'drawing.html',
+          mimeType: 'text/html'
+        };
+
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+        form.append('file', contentBlob);
+
+        await fetch('https://www.googleapis.com/upload/drive/v3/files/' + fileId + '?uploadType=multipart', {
+          method: 'PATCH',
+          headers: new Headers({
+            'Authorization': 'Bearer ' + gapi.auth.getToken().access_token
+          }),
+          body: form,
+        });
+        alert('File updated on Drive.');
+      } catch (error) {
+        console.error('Error updating file', error);
+      }
+    }
+    // ====== End Google Drive API Configuration ======
+  </script>
+
+  <script>
     document.addEventListener("DOMContentLoaded", () => {
+      // Load Google API client after DOM
+      gapiLoaded();
+
       // DOM Elements
       const canvas = document.querySelector(".canvas");
       const layersList = document.querySelector("#layersList");
@@ -246,10 +453,11 @@
       const redoButton = document.querySelector("#redo");
       const exportButton = document.querySelector("#export");
       const shapeIcons = document.querySelectorAll(".icon");
+      const deleteButton = document.querySelector("#deleteShape");
 
       // State
       let selectedShapeType = "rectangle";
-      let shapes = []; // Array of shape objects { id, element, type, locked, hidden, zIndex }
+      let shapes = []; // { id, element, type, zIndex }
       let redoStack = [];
       let isDrawing = false;
       let startX = 0;
@@ -265,24 +473,47 @@
       // For multi-selection
       let selectedShapes = new Set();
 
-      // Generate ID
+      // Auto Save to Drive every 5 seconds if signed in
+      setInterval(() => {
+        if (gapi.auth2 && gapi.auth2.getAuthInstance() && gapi.auth2.getAuthInstance().isSignedIn.get()) {
+          saveToDrive();
+        }
+      }, 5000);
+
+      // ============ HELPER FUNCTIONS ============
       function generateId() {
         return "id-" + Math.random().toString(36).substr(2, 9);
       }
 
-      // Helper: parse float or default
       function safeParseFloat(val, def = 1) {
         const parsed = parseFloat(val);
         return isNaN(parsed) ? def : parsed;
       }
 
-      // Rerender layers panel
+      function hexToRgb(hex) {
+        hex = hex.replace(/^#/, "");
+        if (hex.length === 3) {
+          const r = parseInt(hex[0] + hex[0], 16);
+          const g = parseInt(hex[1] + hex[1], 16);
+          const b = parseInt(hex[2] + hex[2], 16);
+          return { r, g, b };
+        } else if (hex.length === 6) {
+          const r = parseInt(hex.substring(0, 2), 16);
+          const g = parseInt(hex.substring(2, 4), 16);
+          const b = parseInt(hex.substring(4, 6), 16);
+          return { r, g, b };
+        }
+        return null;
+      }
+
+      function snap(value, gridSize) {
+        return Math.round(value / gridSize) * gridSize;
+      }
+
+      // ============ LAYERS & RENDERING ============
       function renderLayers() {
         layersList.innerHTML = "";
-        // Sort by zIndex descending
-        const sorted = [...shapes].sort(
-          (a, b) => (b.zIndex || 0) - (a.zIndex || 0)
-        );
+        const sorted = [...shapes].sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0));
         sorted.forEach(shape => {
           const div = document.createElement("div");
           div.classList.add("layer-item");
@@ -291,7 +522,6 @@
           }
           div.textContent = `${shape.type} (${shape.id})`;
 
-          // add up/down controls
           const controls = document.createElement("div");
           controls.classList.add("layer-controls");
 
@@ -313,7 +543,6 @@
 
           controls.appendChild(upBtn);
           controls.appendChild(downBtn);
-
           div.appendChild(controls);
 
           div.addEventListener("click", (e) => {
@@ -333,38 +562,8 @@
         });
       }
 
-      // Bring forward / send backward
-      function bringForward(id) {
-        const shapeObj = shapes.find(s => s.id === id);
-        if (!shapeObj) return;
-        shapeObj.zIndex = shapeObj.zIndex + 1;
-        // if collide, shift others
-        updateZIndices();
-        renderLayers();
-      }
-
-      function sendBackward(id) {
-        const shapeObj = shapes.find(s => s.id === id);
-        if (!shapeObj) return;
-        shapeObj.zIndex = Math.max(0, shapeObj.zIndex - 1);
-        updateZIndices();
-        renderLayers();
-      }
-
-      function updateZIndices() {
-        // Sort shapes by zIndex ascending, reassign unique zIndexes
-        shapes.sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
-        shapes.forEach((s, i) => {
-          s.zIndex = i + 1;
-          s.element.style.zIndex = s.zIndex;
-        });
-      }
-
-      // Update shape selection UI
       function updateSelectionUI() {
-        shapes.forEach(s => {
-          s.element.classList.remove("selected");
-        });
+        shapes.forEach(s => s.element.classList.remove("selected"));
         shapes.forEach(s => {
           if (selectedShapes.has(s.id)) {
             s.element.classList.add("selected");
@@ -372,96 +571,30 @@
         });
       }
 
-      // Tools & UI Listeners
-      shapeIcons.forEach(icon => {
-        icon.addEventListener("click", () => {
-          selectedShapeType = icon.getAttribute("data-shape");
-        });
-      });
-
-      colorPicker.addEventListener("input", e => {
-        selectedFillColor = e.target.value;
-        // Update fill color of selected shapes
-        selectedShapes.forEach(sId => {
-          const sObj = shapes.find(obj => obj.id === sId);
-          if (sObj && sObj.type !== "group") {
-            sObj.element.style.backgroundColor = selectedFillColor;
-          }
-        });
-      });
-
-      fillOpacityRange.addEventListener("input", e => {
-        selectedFillOpacity = safeParseFloat(e.target.value, 1);
-        // Update fill opacity of selected shapes (just the background)
-        selectedShapes.forEach(sId => {
-          const sObj = shapes.find(obj => obj.id === sId);
-          if (sObj && sObj.type !== "group") {
-            sObj.element.style.opacity = selectedFillOpacity;
-          }
-        });
-      });
-
-      borderColorPicker.addEventListener("input", e => {
-        selectedBorderColor = e.target.value;
-        // Update border color of selected shapes
-        selectedShapes.forEach(sId => {
-          const sObj = shapes.find(obj => obj.id === sId);
-          if (sObj && sObj.type !== "group") {
-            const shapeStyle = window.getComputedStyle(sObj.element);
-            sObj.element.style.borderColor = selectedBorderColor;
-          }
-        });
-      });
-
-      borderOpacityRange.addEventListener("input", e => {
-        selectedBorderOpacity = safeParseFloat(e.target.value, 1);
-        // Update border opacity by applying RGBA to borderColor
-        selectedShapes.forEach(sId => {
-          const sObj = shapes.find(obj => obj.id === sId);
-          if (sObj && sObj.type !== "group") {
-            const rgb = hexToRgb(selectedBorderColor);
-            if (rgb) {
-              sObj.element.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
-            }
-          }
-        });
-      });
-
-      borderWidthInput.addEventListener("input", e => {
-        selectedBorderWidth = parseInt(e.target.value);
-        // Update border width of selected shapes
-        selectedShapes.forEach(sId => {
-          const sObj = shapes.find(obj => obj.id === sId);
-          if (sObj && sObj.type !== "group") {
-            sObj.element.style.borderWidth = selectedBorderWidth + "px";
-          }
-        });
-      });
-
-      function hexToRgb(hex) {
-        // Remove # if present
-        hex = hex.replace(/^#/, "");
-        // 3-digit or 6-digit
-        if (hex.length === 3) {
-          const r = parseInt(hex[0] + hex[0], 16);
-          const g = parseInt(hex[1] + hex[1], 16);
-          const b = parseInt(hex[2] + hex[2], 16);
-          return { r, g, b };
-        } else if (hex.length === 6) {
-          const r = parseInt(hex.substring(0, 2), 16);
-          const g = parseInt(hex.substring(2, 4), 16);
-          const b = parseInt(hex.substring(4, 6), 16);
-          return { r, g, b };
-        }
-        return null;
+      function bringForward(id) {
+        const shapeObj = shapes.find(s => s.id === id);
+        if (!shapeObj) return;
+        shapeObj.zIndex++;
+        reassignZIndices();
       }
 
-      // Snap to grid helper
-      function snap(value, gridSize) {
-        return Math.round(value / gridSize) * gridSize;
+      function sendBackward(id) {
+        const shapeObj = shapes.find(s => s.id === id);
+        if (!shapeObj) return;
+        shapeObj.zIndex = Math.max(1, shapeObj.zIndex - 1);
+        reassignZIndices();
       }
 
-      // Create new shape object
+      function reassignZIndices() {
+        shapes.sort((a, b) => (a.zIndex || 1) - (b.zIndex || 1));
+        shapes.forEach((s, i) => {
+          s.zIndex = i + 1;
+          s.element.style.zIndex = s.zIndex;
+        });
+        renderLayers();
+      }
+
+      // ============ CREATE SHAPES ============
       function createNewShape() {
         const id = generateId();
         const el = document.createElement("div");
@@ -475,27 +608,21 @@
         el.style.borderWidth = selectedBorderWidth + "px";
         el.style.borderStyle = "solid";
         el.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
-        el.style.position = "absolute";
-        // We'll assign zIndex after we push to shapes array
-        el.dataset.id = id;
-        el.dataset.isGroup = "false";
         el.style.left = startX + "px";
         el.style.top = startY + "px";
         el.style.width = "0px";
         el.style.height = "0px";
+        el.dataset.id = id;
         addShapeEventListeners(el);
+
         const shapeObj = {
           id,
           element: el,
           type: selectedShapeType,
-          locked: false,
-          hidden: false,
           zIndex: shapes.length + 1,
         };
         shapes.push(shapeObj);
-        // Apply zIndex
         el.style.zIndex = shapeObj.zIndex;
-        redoStack = [];
         return shapeObj;
       }
 
@@ -518,7 +645,6 @@
         el.style.minWidth = "50px";
         el.style.minHeight = "20px";
         el.dataset.id = id;
-        el.dataset.isGroup = "false";
         el.contentEditable = "true";
         el.innerText = "Your Text";
         addShapeEventListeners(el);
@@ -527,8 +653,6 @@
           id,
           element: el,
           type: "text",
-          locked: false,
-          hidden: false,
           zIndex: shapes.length + 1,
         };
         shapes.push(shapeObj);
@@ -540,12 +664,11 @@
         renderLayers();
       }
 
-      // Add shape event listeners
       function addShapeEventListeners(el) {
         el.addEventListener("mousedown", shapeMouseDown);
       }
 
-      // Clicking on shape to drag
+      // ============ DRAGGING ============
       function shapeMouseDown(e) {
         if (isDrawing) return;
         const shapeEl = e.currentTarget;
@@ -565,24 +688,20 @@
 
         function mouseMove(ev) {
           const cRect = canvas.getBoundingClientRect();
-          let left = (ev.clientX - cRect.left - offsetX);
-          let top = (ev.clientY - cRect.top - offsetY);
+          let left = ev.clientX - cRect.left - offsetX;
+          let top = ev.clientY - cRect.top - offsetY;
           if (snapToGridCheckbox.checked) {
             left = snap(left, 20);
             top = snap(top, 20);
           }
-          // move all selected shapes together
           selectedShapes.forEach(sId => {
             const sObj = shapes.find(obj => obj.id === sId);
-            if (sObj && !sObj.element.dataset.isGroup && !sObj.locked) {
-              const dx = parseInt(sObj.element.style.left) - parseInt(shapeEl.style.left);
-              const dy = parseInt(sObj.element.style.top) - parseInt(shapeEl.style.top);
-              sObj.element.style.left = (left + dx) + "px";
-              sObj.element.style.top = (top + dy) + "px";
-            }
+            if (!sObj) return;
+            const dx = parseInt(sObj.element.style.left) - parseInt(shapeEl.style.left);
+            const dy = parseInt(sObj.element.style.top) - parseInt(shapeEl.style.top);
+            sObj.element.style.left = (left + dx) + "px";
+            sObj.element.style.top = (top + dy) + "px";
           });
-          shapeEl.style.left = left + "px";
-          shapeEl.style.top = top + "px";
         }
 
         function mouseUp() {
@@ -594,7 +713,7 @@
         document.addEventListener("mouseup", mouseUp);
       }
 
-      // Resize handle
+      // ============ RESIZING & ROTATION ============
       function addResizeHandle(shapeEl) {
         if (shapeEl.querySelector(".resize-handle")) return;
         const resize = document.createElement("div");
@@ -615,8 +734,6 @@
             const deltaY = ev.clientY - initialY;
             let newWidth = initialW + deltaX;
             let newHeight = initialH + deltaY;
-
-            // If drawing in negative direction, handle flipping
             if (newWidth < 0) {
               shapeEl.style.left = (shapeLeft + newWidth) + "px";
               newWidth = Math.abs(newWidth);
@@ -625,7 +742,6 @@
               shapeEl.style.top = (shapeTop + newHeight) + "px";
               newHeight = Math.abs(newHeight);
             }
-
             if (ev.shiftKey) {
               const aspect = initialW / initialH || 1;
               if (Math.abs(deltaX) > Math.abs(deltaY)) {
@@ -638,7 +754,6 @@
               newWidth = snap(newWidth, 20);
               newHeight = snap(newHeight, 20);
             }
-
             shapeEl.style.width = newWidth + "px";
             shapeEl.style.height = newHeight + "px";
           }
@@ -653,7 +768,6 @@
         });
       }
 
-      // Rotation handle
       function addRotateHandle(shapeEl) {
         if (shapeEl.querySelector(".rotate-handle")) return;
         const rotate = document.createElement("div");
@@ -669,7 +783,6 @@
           function onMouseMove(ev) {
             const mouseX = ev.clientX - rect.left;
             const mouseY = ev.clientY - rect.top;
-
             const dx = mouseX - centerX;
             const dy = mouseY - centerY;
             let angle = Math.atan2(dy, dx) * (180 / Math.PI);
@@ -686,26 +799,16 @@
         });
       }
 
-      // Add shape to the shapes array
-      function addShape(shapeObj) {
-        redoStack = [];
-        renderLayers();
-      }
-
-      // Group / Ungroup
+      // ============ GROUP & UNGROUP ============
       groupBtn.addEventListener("click", () => {
         if (selectedShapes.size < 2) return;
         const groupId = generateId();
         const groupEl = document.createElement("div");
         groupEl.classList.add("shape");
-        groupEl.style.position = "absolute";
-        groupEl.style.left = "0px";
-        groupEl.style.top = "0px";
-        groupEl.style.width = "0px";
-        groupEl.style.height = "0px";
-        groupEl.style.border = "2px dashed #444";
         groupEl.dataset.id = groupId;
         groupEl.dataset.isGroup = "true";
+        groupEl.style.position = "absolute";
+        groupEl.style.border = "2px dashed #444";
         canvas.appendChild(groupEl);
 
         let minX = Infinity;
@@ -733,6 +836,7 @@
         groupEl.style.top = `${minY}px`;
         groupEl.style.width = `${groupWidth}px`;
         groupEl.style.height = `${groupHeight}px`;
+
         groupedShapes.forEach(s => {
           const el = s.element;
           const shapeLeft = parseInt(el.style.left) - minX;
@@ -741,6 +845,7 @@
           el.style.top = shapeTop + "px";
           groupEl.appendChild(el);
         });
+
         shapes = shapes.filter(s => !selectedShapes.has(s.id));
         const groupObj = {
           id: groupId,
@@ -767,24 +872,26 @@
           if (child.classList && child.classList.contains("shape")) {
             const offsetLeft = parseInt(groupEl.style.left);
             const offsetTop = parseInt(groupEl.style.top);
-            child.style.left = (offsetLeft + parseInt(child.style.left)) + "px";
-            child.style.top = (offsetTop + parseInt(child.style.top)) + "px";
+            const childLeft = parseInt(child.style.left) + offsetLeft;
+            const childTop = parseInt(child.style.top) + offsetTop;
+            child.style.left = childLeft + "px";
+            child.style.top = childTop + "px";
             canvas.appendChild(child);
             const childId = child.dataset.id;
-            const type = child.classList.contains("circle")
-              ? "circle"
-              : child.classList.contains("shape-text")
-                ? "text"
-                : child.dataset.isGroup === "true"
-                  ? "group"
-                  : "rectangle";
-            shapes.push({
-              id: childId,
-              element: child,
-              type,
-              zIndex: shapes.length + 1,
-            });
-            child.style.zIndex = shapes.length;
+            const cShape = shapes.find(x => x.id === childId);
+            if (!cShape) {
+              // create new if we lost reference
+              shapes.push({
+                id: childId,
+                element: child,
+                type: child.classList.contains("circle") ? "circle" : child.classList.contains("shape-text") ? "text" : "rectangle",
+                zIndex: shapes.length + 1,
+              });
+              child.style.zIndex = shapes.length;
+            } else {
+              cShape.zIndex = shapes.length + 1;
+              child.style.zIndex = cShape.zIndex;
+            }
           } else {
             groupEl.removeChild(child);
           }
@@ -795,7 +902,7 @@
         renderLayers();
       });
 
-      // Undo / Redo logic
+      // ============ UNDO / REDO ============
       undoButton.addEventListener("click", () => {
         if (shapes.length > 0) {
           const last = shapes.pop();
@@ -813,12 +920,11 @@
           const shapeObj = redoStack.pop();
           shapes.push(shapeObj);
           canvas.appendChild(shapeObj.element);
-          updateZIndices();
-          renderLayers();
+          reassignZIndices();
         }
       });
 
-      // Export
+      // ============ EXPORT BUTTON ============
       exportButton.addEventListener("click", () => {
         const data = `<html>\n<body>\n${canvas.outerHTML}\n</body>\n</html>`;
         const blob = new Blob([data], { type: "text/html" });
@@ -828,8 +934,88 @@
         a.click();
       });
 
-      // Drawing logic
+      // ============ DELETE SHAPE ============
+      deleteButton.addEventListener("click", () => {
+        if (selectedShapes.size < 1) return;
+        // Remove each selected shape from the DOM and from shapes array
+        selectedShapes.forEach(sId => {
+          const shapeObj = shapes.find(s => s.id === sId);
+          if (shapeObj) {
+            shapeObj.element.remove();
+            shapes = shapes.filter(s => s.id !== sId);
+          }
+        });
+        selectedShapes.clear();
+        renderLayers();
+      });
+
+      // ============ EVENT LISTENERS FOR DRAWING ============
+      shapeIcons.forEach(icon => {
+        icon.addEventListener("click", () => {
+          selectedShapeType = icon.getAttribute("data-shape");
+        });
+      });
+
+      colorPicker.addEventListener("input", e => {
+        selectedFillColor = e.target.value;
+        selectedShapes.forEach(sId => {
+          const sObj = shapes.find(obj => obj.id === sId);
+          if (sObj && sObj.type !== "group") {
+            sObj.element.style.backgroundColor = selectedFillColor;
+          }
+        });
+      });
+
+      fillOpacityRange.addEventListener("input", e => {
+        selectedFillOpacity = safeParseFloat(e.target.value, 1);
+        selectedShapes.forEach(sId => {
+          const sObj = shapes.find(obj => obj.id === sId);
+          if (sObj && sObj.type !== "group") {
+            sObj.element.style.opacity = selectedFillOpacity;
+          }
+        });
+      });
+
+      borderColorPicker.addEventListener("input", e => {
+        selectedBorderColor = e.target.value;
+        selectedShapes.forEach(sId => {
+          const sObj = shapes.find(obj => obj.id === sId);
+          if (sObj && sObj.type !== "group") {
+            const rgb = hexToRgb(selectedBorderColor);
+            if (rgb) {
+              // keep border opacity
+              sObj.element.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
+            }
+          }
+        });
+      });
+
+      borderOpacityRange.addEventListener("input", e => {
+        selectedBorderOpacity = safeParseFloat(e.target.value, 1);
+        selectedShapes.forEach(sId => {
+          const sObj = shapes.find(obj => obj.id === sId);
+          if (sObj && sObj.type !== "group") {
+            const rgb = hexToRgb(selectedBorderColor);
+            if (rgb) {
+              sObj.element.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
+            }
+          }
+        });
+      });
+
+      borderWidthInput.addEventListener("input", e => {
+        selectedBorderWidth = parseInt(e.target.value);
+        selectedShapes.forEach(sId => {
+          const sObj = shapes.find(obj => obj.id === sId);
+          if (sObj && sObj.type !== "group") {
+            sObj.element.style.borderWidth = selectedBorderWidth + "px";
+          }
+        });
+      });
+
+      // ============ MOUSE EVENTS FOR CANVAS (CREATE SHAPE) ============
       canvas.addEventListener("mousedown", e => {
+        // If text mode
         if (selectedShapeType === "text") {
           createTextShape(e);
           return;
@@ -865,7 +1051,6 @@
         if (!isDrawing) return;
         isDrawing = false;
         if (currentShape) {
-          // handle negative dims
           const shapeLeft = parseInt(currentShape.element.style.left);
           const shapeTop = parseInt(currentShape.element.style.top);
           let shapeW = parseInt(currentShape.element.style.width);
@@ -878,13 +1063,11 @@
             currentShape.element.style.top = (shapeTop + shapeH) + "px";
             currentShape.element.style.height = Math.abs(shapeH) + "px";
           }
-
           addResizeHandle(currentShape.element);
           addRotateHandle(currentShape.element);
           currentShape = null;
         }
-        updateZIndices();
-        renderLayers();
+        reassignZIndices();
       });
     });
   </script>
