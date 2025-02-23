@@ -21,8 +21,9 @@
       display: flex;
       height: 100vh;
     }
+    /* Фиксированная боковая панель, чтобы не сжималась */
     .sidebar {
-      width: 320px;
+      flex: 0 0 320px;
       background-color: #fff;
       border-right: 1px solid #ccc;
       padding: 16px;
@@ -161,6 +162,7 @@
       border-radius: 4px;
       padding: 8px;
       margin-bottom: 10px;
+      min-height: 50px;
     }
     .layer-item {
       padding: 6px 8px;
@@ -202,7 +204,7 @@
       position: absolute;
       top: 50%;
       left: 0;
-      height: 2px; /* будет перезаписываться через JS с учетом выбранной толщины */
+      height: 2px; /* будет перезаписываться через JS */
       background-color: black;
       transform: translateY(-50%);
     }
@@ -220,7 +222,7 @@
 <body>
   <div class="sidebar">
     <h2>Tools</h2>
-    <div id="appVersion">Version v1.0.4</div>
+    <div id="appVersion">Version v1.0.5</div>
     <div class="toolbar">
       <div class="icon pointer active" data-shape="pointer" title="Pointer"></div>
       <div class="icon rectangle" data-shape="rectangle" title="Rectangle"></div>
@@ -264,7 +266,10 @@
     </div>
     <button id="deleteShape">Delete Shape</button>
     <h3>Layers</h3>
-    <div class="layers" id="layersList"></div>
+    <div class="layers" id="layersList">
+      <!-- Если слоёв нет, отображается сообщение -->
+      <p id="noLayersMsg" style="color:#666; text-align:center;">Нет слоёв</p>
+    </div>
     <div class="form-group" id="driveControls">
       <label>Google Drive Integration</label>
       <button id="signin_button">Sign In</button>
@@ -358,7 +363,6 @@
           headers: { Authorization: `Bearer ${accessToken}` }
         });
         const fileContent = await resp.text();
-        // При загрузке содержимого файла может понадобиться повторная инициализация событий.
         document.querySelector('.canvas-container').innerHTML = fileContent;
         currentFileId = fileId;
         alert('File loaded from Drive.');
@@ -426,6 +430,7 @@
     "use strict";
     const canvas = document.querySelector(".canvas");
     const layersList = document.querySelector("#layersList");
+    const noLayersMsg = document.getElementById("noLayersMsg");
 
     // Константы и начальные переменные
     const GRID_SIZE = 20;
@@ -515,6 +520,10 @@
     // Обновление списка слоёв
     function renderLayers() {
       layersList.innerHTML = "";
+      if (shapes.length === 0) {
+        layersList.appendChild(noLayersMsg);
+        return;
+      }
       const sorted = [...shapes].sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0));
       sorted.forEach(shape => {
         const div = document.createElement("div");
@@ -551,9 +560,12 @@
 
     // Подсветка выбранных фигур
     function updateSelectionUI() {
-      shapes.forEach(s => s.element.classList.remove("selected"));
       shapes.forEach(s => {
-        if (selectedShapes.has(s.id)) s.element.classList.add("selected");
+        // Используем s.element для всех фигур (для стрелок оно теперь установлено)
+        s.element.classList.remove("selected");
+        if (selectedShapes.has(s.id)) {
+          s.element.classList.add("selected");
+        }
       });
     }
 
@@ -603,7 +615,6 @@
       // Создаем стержень стрелки
       const arrowShaft = document.createElement('div');
       arrowShaft.classList.add('arrow-shaft');
-      arrowShaft.style.position = 'absolute';
       arrowShaft.style.left = '0';
       arrowShaft.style.top = '50%';
       arrowShaft.style.height = selectedBorderWidth + 'px';
@@ -614,9 +625,6 @@
       // Создаем наконечник стрелки
       const arrowHead = document.createElement('div');
       arrowHead.classList.add('arrow-head');
-      arrowHead.style.position = 'absolute';
-      arrowHead.style.width = '0';
-      arrowHead.style.height = '0';
       arrowHead.style.borderTop = '5px solid transparent';
       arrowHead.style.borderBottom = '5px solid transparent';
       arrowHead.style.borderLeft = '10px solid ' + selectedBorderColor;
@@ -624,9 +632,10 @@
 
       canvas.appendChild(arrowContainer);
 
+      // Важно: для стрелок присваиваем свойство element, чтобы остальные функции могли работать с ними
       const arrowObj = {
         id: arrowId,
-        container: arrowContainer,
+        element: arrowContainer,
         shaft: arrowShaft,
         head: arrowHead,
         type: 'arrow',
@@ -730,7 +739,7 @@
       el.addEventListener('mousedown', shapeMouseDown);
     }
 
-    // Изменённая функция обработки клика по фигурам – если выбран инструмент pointer, то фигура перемещается
+    // Обработка клика по фигурам – если выбран инструмент pointer, то фигура перемещается
     function shapeMouseDown(e) {
       if (isDrawing) return;
       e.stopPropagation();
@@ -1009,10 +1018,8 @@
         const sObj = shapes.find(s => s.id === sId);
         if (sObj && sObj.type !== 'group') {
           if (sObj.type === 'arrow') {
-            if (sObj.container) {
-              sObj.shaft.style.backgroundColor = selectedBorderColor;
-              sObj.head.style.borderLeft = '10px solid ' + selectedBorderColor;
-            }
+            sObj.shaft.style.backgroundColor = selectedBorderColor;
+            sObj.head.style.borderLeft = '10px solid ' + selectedBorderColor;
           } else {
             const rgb = hexToRgb(selectedBorderColor) || { r: 0, g: 0, b: 0 };
             sObj.element.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${selectedBorderOpacity})`;
