@@ -10,15 +10,12 @@
             text-align: center;
             background-color: #f4f4f4;
         }
-        h1 {
-            color: #333;
-        }
         .toolbar {
             margin-bottom: 10px;
         }
         .canvas {
-            width: 600px;
-            height: 400px;
+            width: 800px;
+            height: 500px;
             border: 2px dashed #333;
             background-color: white;
             position: relative;
@@ -27,7 +24,10 @@
         .shape {
             position: absolute;
             cursor: grab;
-            border: 2px solid black;
+            border: 1px solid black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
         .circle {
             border-radius: 50%;
@@ -56,16 +56,20 @@
             bottom: -5px;
             cursor: nwse-resize;
         }
+        .selected {
+            outline: 2px dashed blue;
+        }
     </style>
 </head>
 <body>
     <h1>Drawing App</h1>
     <div class="toolbar">
-        <input type="color" id="borderColorPicker" value="#000000" />
-        <input type="range" id="borderWidth" min="1" max="10" value="2" />
-        <label>
-            <input type="checkbox" id="transparentFill" /> Transparent Fill
-        </label>
+        <input type="color" id="colorPicker" value="#ff0000" />
+        <input type="range" id="opacityRange" min="0" max="1" step="0.1" value="1">
+        <input type="number" id="borderWidth" min="1" max="10" value="1">
+        <button id="undo">Undo</button>
+        <button id="redo">Redo</button>
+        <button id="export">Export</button>
         <div class="icon rectangle" data-shape="rectangle"></div>
         <div class="icon circle" data-shape="circle"></div>
     </div>
@@ -73,22 +77,32 @@
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             const canvas = document.querySelector(".canvas");
-            const borderColorPicker = document.querySelector("#borderColorPicker");
-            const borderWidthPicker = document.querySelector("#borderWidth");
-            const transparentFillCheckbox = document.querySelector("#transparentFill");
+            const colorPicker = document.querySelector("#colorPicker");
+            const opacityRange = document.querySelector("#opacityRange");
+            const borderWidthInput = document.querySelector("#borderWidth");
+            const undoButton = document.querySelector("#undo");
+            const redoButton = document.querySelector("#redo");
+            const exportButton = document.querySelector("#export");
             const shapeIcons = document.querySelectorAll(".icon");
-            let selectedBorderColor = "#000000";
-            let selectedBorderWidth = "2";
+            let selectedColor = "#ff0000";
+            let selectedOpacity = "1";
+            let selectedBorderWidth = "1";
             let selectedShape = "rectangle";
             let isDrawing = false;
             let startX, startY;
             let currentShape = null;
+            let history = [];
+            let redoStack = [];
 
-            borderColorPicker.addEventListener("input", (event) => {
-                selectedBorderColor = event.target.value;
+            colorPicker.addEventListener("input", (event) => {
+                selectedColor = event.target.value;
             });
 
-            borderWidthPicker.addEventListener("input", (event) => {
+            opacityRange.addEventListener("input", (event) => {
+                selectedOpacity = event.target.value;
+            });
+
+            borderWidthInput.addEventListener("input", (event) => {
                 selectedBorderWidth = event.target.value;
             });
 
@@ -108,13 +122,13 @@
                 currentShape.classList.add("shape", selectedShape);
                 currentShape.style.left = `${startX}px`;
                 currentShape.style.top = `${startY}px`;
-                currentShape.style.borderColor = selectedBorderColor;
-                currentShape.style.borderWidth = `${selectedBorderWidth}px`;
-                currentShape.style.borderStyle = "solid";
-                currentShape.style.backgroundColor = transparentFillCheckbox.checked ? "transparent" : "white";
+                currentShape.style.backgroundColor = selectedColor;
+                currentShape.style.opacity = selectedOpacity;
+                currentShape.style.border = `${selectedBorderWidth}px solid black`;
+                currentShape.style.width = `0px`;
+                currentShape.style.height = `0px`;
                 canvas.appendChild(currentShape);
-
-                currentShape.addEventListener("mousedown", dragStart);
+                history.push(currentShape);
             });
 
             canvas.addEventListener("mousemove", (event) => {
@@ -131,58 +145,32 @@
 
             canvas.addEventListener("mouseup", () => {
                 isDrawing = false;
-                if (currentShape) {
-                    addResizeHandle(currentShape);
+            });
+
+            undoButton.addEventListener("click", () => {
+                if (history.length > 0) {
+                    const shape = history.pop();
+                    redoStack.push(shape);
+                    shape.remove();
                 }
             });
 
-            function addResizeHandle(shape) {
-                const handle = document.createElement("div");
-                handle.classList.add("resize-handle");
-                shape.appendChild(handle);
-
-                handle.addEventListener("mousedown", (event) => {
-                    event.stopPropagation();
-                    let initialX = event.clientX;
-                    let initialY = event.clientY;
-                    let initialWidth = parseInt(shape.style.width);
-                    let initialHeight = parseInt(shape.style.height);
-
-                    function resize(event) {
-                        let newWidth = initialWidth + (event.clientX - initialX);
-                        let newHeight = initialHeight + (event.clientY - initialY);
-                        shape.style.width = `${newWidth}px`;
-                        shape.style.height = `${newHeight}px`;
-                    }
-
-                    function stopResize() {
-                        document.removeEventListener("mousemove", resize);
-                        document.removeEventListener("mouseup", stopResize);
-                    }
-
-                    document.addEventListener("mousemove", resize);
-                    document.addEventListener("mouseup", stopResize);
-                });
-            }
-
-            function dragStart(event) {
-                const shape = event.target;
-                let offsetX = event.clientX - shape.offsetLeft;
-                let offsetY = event.clientY - shape.offsetTop;
-
-                function drag(event) {
-                    shape.style.left = `${event.clientX - offsetX}px`;
-                    shape.style.top = `${event.clientY - offsetY}px`;
+            redoButton.addEventListener("click", () => {
+                if (redoStack.length > 0) {
+                    const shape = redoStack.pop();
+                    canvas.appendChild(shape);
+                    history.push(shape);
                 }
+            });
 
-                function stopDrag() {
-                    document.removeEventListener("mousemove", drag);
-                    document.removeEventListener("mouseup", stopDrag);
-                }
-
-                document.addEventListener("mousemove", drag);
-                document.addEventListener("mouseup", stopDrag);
-            }
+            exportButton.addEventListener("click", () => {
+                const data = canvas.innerHTML;
+                const blob = new Blob([data], { type: "text/html" });
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(blob);
+                a.download = "drawing.html";
+                a.click();
+            });
         });
     </script>
 </body>
