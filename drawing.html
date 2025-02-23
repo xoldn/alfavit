@@ -34,6 +34,11 @@
       margin-top: 0;
       margin-bottom: 10px;
     }
+    #appVersion {
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+      color: #666;
+    }
     .form-group {
       margin-bottom: 10px;
       display: flex;
@@ -206,9 +211,11 @@
   </style>
 </head>
 <body>
-  <p>version 1.0.2</p>
   <div class="sidebar">
     <h2>Tools</h2>
+    <!-- Show version here -->
+    <div id="appVersion">Version v1.0.1</div>
+
     <div class="toolbar">
       <div class="icon rectangle active" data-shape="rectangle" title="Rectangle"></div>
       <div class="icon circle" data-shape="circle" title="Circle"></div>
@@ -419,7 +426,6 @@
         form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
         form.append('file', contentBlob);
 
-        // remove confirmation alert
         await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`, {
           method: 'PATCH',
           headers: {
@@ -525,72 +531,34 @@
       /* LAYERS + RENDER                                    */
       /******************************************************/
       function renderLayers() {
-  layersList.innerHTML = "";
-  // Sort from highest zIndex to lowest
-  const sorted = [...shapes].sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0));
-  sorted.forEach(shape => {
-    const div = document.createElement("div");
-    div.classList.add("layer-item");
-    if (selectedShapes.has(shape.id)) {
-      div.classList.add("selected");
-    }
-    div.textContent = `${shape.type} (${shape.id})`;
-
-    // Make entire div draggable to reorder
-    div.draggable = true;
-    div.addEventListener("dragstart", e => {
-      e.dataTransfer.setData("text/plain", shape.id);
-    });
-
-    div.addEventListener("dragover", e => {
-      e.preventDefault();
-    });
-
-    div.addEventListener("drop", e => {
-      e.preventDefault();
-      const draggedId = e.dataTransfer.getData("text/plain");
-      if (draggedId !== shape.id) {
-        reorderShapes(draggedId, shape.id);
-      }
-    });
-
-    const controls = document.createElement("div");
-    controls.classList.add("layer-controls");
-    const upBtn = document.createElement("button");
-    upBtn.classList.add("layer-btn");
-    upBtn.textContent = "▲";
-    upBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      bringForward(shape.id);
-    });
-    const downBtn = document.createElement("button");
-    downBtn.classList.add("layer-btn");
-    downBtn.textContent = "▼";
-    downBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      sendBackward(shape.id);
-    });
-    controls.appendChild(upBtn);
-    controls.appendChild(downBtn);
-    div.appendChild(controls);
-
-    div.addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (!e.shiftKey) {
-        selectedShapes.clear();
-      }
-      if (selectedShapes.has(shape.id)) {
-        selectedShapes.delete(shape.id);
-      } else {
-        selectedShapes.add(shape.id);
-      }
-      updateSelectionUI();
-      renderLayers();
-    });
-    layersList.appendChild(div);
-  });
-}
+        layersList.innerHTML = "";
+        // Sort from highest zIndex to lowest
+        const sorted = [...shapes].sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0));
+        sorted.forEach(shape => {
+          const div = document.createElement("div");
+          div.classList.add("layer-item");
+          if (selectedShapes.has(shape.id)) {
+            div.classList.add("selected");
+          }
           div.textContent = `${shape.type} (${shape.id})`;
+
+          // Make entire div draggable to reorder
+          div.draggable = true;
+          div.addEventListener("dragstart", e => {
+            e.dataTransfer.setData("text/plain", shape.id);
+          });
+
+          div.addEventListener("dragover", e => {
+            e.preventDefault();
+          });
+
+          div.addEventListener("drop", e => {
+            e.preventDefault();
+            const draggedId = e.dataTransfer.getData("text/plain");
+            if (draggedId !== shape.id) {
+              reorderShapes(draggedId, shape.id);
+            }
+          });
 
           const controls = document.createElement("div");
           controls.classList.add("layer-controls");
@@ -639,50 +607,47 @@
       }
 
       function bringForward(id) {
-  const shapeObj = shapes.find(s => s.id === id);
-  if (!shapeObj) return;
-  // Increase zIndex by 1
-  shapeObj.zIndex++;
-  reassignZIndices();
-}
+        const shapeObj = shapes.find(s => s.id === id);
+        if (!shapeObj) return;
+        // Increase zIndex by 1
+        shapeObj.zIndex++;
+        reassignZIndices();
+      }
 
       function sendBackward(id) {
-  const shapeObj = shapes.find(s => s.id === id);
-  if (!shapeObj) return;
-  // Decrease zIndex by 1, but minimum is 1
-  shapeObj.zIndex = Math.max(1, shapeObj.zIndex - 1);
-  reassignZIndices();
-}
+        const shapeObj = shapes.find(s => s.id === id);
+        if (!shapeObj) return;
+        // Decrease zIndex by 1, but minimum is 1
+        shapeObj.zIndex = Math.max(1, shapeObj.zIndex - 1);
+        reassignZIndices();
+      }
 
       function reassignZIndices() {
-  // Sort shapes ascending by zIndex
-  shapes.sort((a, b) => (a.zIndex || 1) - (b.zIndex || 1));
-  // Reassign them in ascending order
-  shapes.forEach((s, i) => {
-    s.zIndex = i + 1;
-    s.element.style.zIndex = s.zIndex;
-  });
-  renderLayers();
-}
-
-// Reorder shapes by drag-and-drop in layers panel
-function reorderShapes(draggedId, targetId) {
-  const draggedShape = shapes.find(s => s.id === draggedId);
-  const targetShape = shapes.find(s => s.id === targetId);
-  if (!draggedShape || !targetShape) return;
-
-  // If shapes are the same, do nothing
-  if (draggedShape.id === targetShape.id) return;
-
-  // We'll swap their zIndexes.
-  const tempZ = draggedShape.zIndex;
-  draggedShape.zIndex = targetShape.zIndex;
-  targetShape.zIndex = tempZ;
-
-  reassignZIndices();
-}
-);
+        // Sort shapes ascending by zIndex
+        shapes.sort((a, b) => (a.zIndex || 1) - (b.zIndex || 1));
+        // Reassign them in ascending order
+        shapes.forEach((s, i) => {
+          s.zIndex = i + 1;
+          s.element.style.zIndex = s.zIndex;
+        });
         renderLayers();
+      }
+
+      // Reorder shapes by drag-and-drop in layers panel
+      function reorderShapes(draggedId, targetId) {
+        const draggedShape = shapes.find(s => s.id === draggedId);
+        const targetShape = shapes.find(s => s.id === targetId);
+        if (!draggedShape || !targetShape) return;
+
+        // If shapes are the same, do nothing
+        if (draggedShape.id === targetShape.id) return;
+
+        // We'll swap their zIndexes.
+        const tempZ = draggedShape.zIndex;
+        draggedShape.zIndex = targetShape.zIndex;
+        targetShape.zIndex = tempZ;
+
+        reassignZIndices();
       }
 
       /******************************************************/
@@ -1096,8 +1061,6 @@ function reorderShapes(draggedId, targetId) {
       });
 
       // DRAW
-      const canvasRect = canvas.getBoundingClientRect();
-
       canvas.addEventListener("mousedown", e => {
         if (selectedShapeType === "text") {
           createTextShape(e);
