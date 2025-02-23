@@ -18,15 +18,30 @@
         .circle {
             border-radius: 50%;
         }
+        .icon {
+            width: 40px;
+            height: 40px;
+            display: inline-block;
+            margin: 5px;
+            cursor: pointer;
+            border: 2px solid black;
+        }
+        .icon.rectangle {
+            background-color: lightgray;
+        }
+        .icon.circle {
+            background-color: lightgray;
+            border-radius: 50%;
+        }
     </style>
 </head>
 <body>
     <h1>Drawing App</h1>
     <input type="color" id="colorPicker" value="#ff0000" />
-    <select id="shapeSelector">
-        <option value="rectangle">Rectangle</option>
-        <option value="circle">Circle</option>
-    </select>
+    <div>
+        <div class="icon rectangle" data-shape="rectangle"></div>
+        <div class="icon circle" data-shape="circle"></div>
+    </div>
     <input type="number" id="shapeWidth" placeholder="Width" value="50" />
     <input type="number" id="shapeHeight" placeholder="Height" value="50" />
     <div class="canvas"></div>
@@ -46,9 +61,9 @@
         document.addEventListener("DOMContentLoaded", () => {
             const canvas = document.querySelector(".canvas");
             const colorPicker = document.querySelector("#colorPicker");
-            const shapeSelector = document.querySelector("#shapeSelector");
             const widthInput = document.querySelector("#shapeWidth");
             const heightInput = document.querySelector("#shapeHeight");
+            const shapeIcons = document.querySelectorAll(".icon");
             let selectedColor = "#ff0000";
             let selectedShape = "rectangle";
 
@@ -56,8 +71,10 @@
                 selectedColor = event.target.value;
             });
 
-            shapeSelector.addEventListener("change", (event) => {
-                selectedShape = event.target.value;
+            shapeIcons.forEach(icon => {
+                icon.addEventListener("click", () => {
+                    selectedShape = icon.getAttribute("data-shape");
+                });
             });
 
             canvas.addEventListener("click", (event) => {
