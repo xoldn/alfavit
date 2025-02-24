@@ -275,7 +275,7 @@
   <div class="sidebar">
     <div class="sidebar-header">
       <h2>Инструменты</h2>
-      <div class="version">Version Final.1.0.4</div>
+      <div class="version">Version Final.1.0.5</div>
     </div>
     <div class="toolbar">
       <!-- Порядок: Указатель, Квадрат, Круг, Стрелка, Текст -->
@@ -382,6 +382,9 @@
         callback: (tokenResponse) => {
           accessToken = tokenResponse.access_token;
           localStorage.setItem("accessToken", accessToken);
+          // Обновляем кнопки
+          document.getElementById('signin_button').style.display = 'none';
+          document.getElementById('signout_button').style.display = 'block';
           console.log("Access token получен:", accessToken);
           listFiles();
         },
