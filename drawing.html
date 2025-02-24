@@ -54,7 +54,7 @@
     }
     .sidebar-header h2 { font-size: 1.2rem; color: var(--color-primary); }
     .version { font-size: 0.85rem; color: #999; }
-    /* Панель инструментов – на русском */
+    /* Панель инструментов (на русском) */
     .toolbar {
       display: flex;
       gap: 8px;
@@ -75,11 +75,7 @@
     }
     .icon:hover { background: var(--color-primary); border-color: var(--color-primary); transform: scale(1.07); }
     .icon.active { background: var(--color-accent); border-color: var(--color-accent); transform: scale(1.07); }
-    .icon svg {
-      width: 24px; height: 24px;
-      fill: var(--color-text);
-      transition: fill var(--transition-speed);
-    }
+    .icon svg { width: 24px; height: 24px; fill: var(--color-text); transition: fill var(--transition-speed); }
     .icon:hover svg, .icon.active svg { fill: #fff; }
     /* Секция "Слои" */
     .layers-header { font-size: 1.2rem; color: var(--color-primary); margin-bottom: 4px; }
@@ -101,12 +97,7 @@
       transition: transform var(--transition-speed), background var(--transition-speed), border-color var(--transition-speed);
     }
     .btn-undo-redo:hover { background: var(--color-primary); border-color: var(--color-primary); transform: scale(1.07); }
-    .btn-undo-redo svg {
-      width: 24px;
-      height: 24px;
-      fill: var(--color-text);
-      transition: fill var(--transition-speed);
-    }
+    .btn-undo-redo svg { width: 24px; height: 24px; fill: var(--color-text); transition: fill var(--transition-speed); }
     .btn-undo-redo:hover svg { fill: #fff; }
     .layers {
       flex: 1;
@@ -259,6 +250,24 @@
       display: none;
     }
     .arrow-container.selected .arrow-handle { display: block; }
+    /* Стили для кнопок Google Drive */
+    #signin_button, #signout_button {
+      background: var(--color-primary);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 6px 10px;
+      cursor: pointer;
+      transition: background var(--transition-speed);
+    }
+    #signin_button:hover, #signout_button:hover { background: var(--color-accent); }
+    /* Стили для списка файлов Drive */
+    .drive-file {
+      padding: 4px 8px;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .drive-file:hover { background: #e2e3e5; }
+    .drive-file.selected { background: var(--color-accent); color: #fff; }
   </style>
 </head>
 <body>
@@ -266,7 +275,7 @@
   <div class="sidebar">
     <div class="sidebar-header">
       <h2>Инструменты</h2>
-      <div class="version">Version 1.0.3</div>
+      <div class="version">Version Final.1.0.4</div>
     </div>
     <div class="toolbar">
       <!-- Порядок: Указатель, Квадрат, Круг, Стрелка, Текст -->
@@ -325,8 +334,6 @@
       <div style="display:flex; gap:8px; margin-bottom:4px;">
         <button id="signin_button">Войти</button>
         <button id="signout_button" style="display:none;">Выйти</button>
-        <button id="driveSave">Сохранить</button>
-        <button id="driveOpen">Открыть</button>
       </div>
       <div id="driveFileList" style="max-height:120px; overflow-y:auto;"></div>
     </div>
@@ -340,7 +347,7 @@
       <button id="zoomReset">100%</button>
       <button id="zoomIn">+</button>
     </div>
-    <!-- Панель управления объектом – однострочная, появляется над объектом при выделении -->
+    <!-- Панель управления объектом – однострочная, появляется над объектом -->
     <div id="colorPanel" class="color-panel">
       <div class="field-group"><label>Fill:</label><input type="color" id="cpFillColor" value="#ff0000" /></div>
       <div class="field-group"><label>Op:</label><input type="range" id="cpFillOpacity" min="0" max="1" step="0.1" value="1" /></div>
@@ -358,9 +365,14 @@
   <!-- Скрипты Google Drive -->
   <script>
     "use strict";
+    // Постоянное сохранение входа: если токен есть в localStorage, используем его
+    if (localStorage.getItem("accessToken")) {
+      accessToken = localStorage.getItem("accessToken");
+      document.getElementById('signin_button').style.display = 'none';
+      document.getElementById('signout_button').style.display = 'block';
+    }
     const CLIENT_ID = "158627123477-4m4d7dqms8ndlmfq4mejhdguj1jte08m.apps.googleusercontent.com";
     const SCOPES = "https://www.googleapis.com/auth/drive.file";
-    let accessToken = null;
     let tokenClient = null;
     let currentFileId = null;
     window.onload = () => {
@@ -369,6 +381,7 @@
         scope: SCOPES,
         callback: (tokenResponse) => {
           accessToken = tokenResponse.access_token;
+          localStorage.setItem("accessToken", accessToken);
           console.log("Access token получен:", accessToken);
           listFiles();
         },
@@ -387,90 +400,14 @@
           .catch(err => console.error(err));
       }
       accessToken = null;
+      localStorage.removeItem("accessToken");
       currentFileId = null;
       document.getElementById('driveFileList').innerHTML = '';
       document.getElementById('signin_button').style.display = 'block';
       document.getElementById('signout_button').style.display = 'none';
     }
     async function listFiles() {
-      if (!accessToken) {
-        console.warn("Нет access token. Сначала войдите.");
-        return;
-      }
-      try {
-        const resp = await fetch("https://www.googleapis.com/drive/v3/files?pageSize=10&q=mimeType!='application/vnd.google-apps.folder'", {
-          headers: { Authorization: `Bearer ${accessToken}` }
-        });
-        const data = await resp.json();
-        const fileListElem = document.getElementById('driveFileList');
-        fileListElem.innerHTML = '';
-        if (data.files && data.files.length > 0) {
-          data.files.forEach(file => {
-            const div = document.createElement('div');
-            div.classList.add('drive-file');
-            div.textContent = `${file.name} (${file.id})`;
-            div.style.cursor = "pointer";
-            div.addEventListener('click', () => loadFromDrive(file.id));
-            fileListElem.appendChild(div);
-          });
-        } else {
-          fileListElem.innerHTML = 'Файлы не найдены.';
-        }
-      } catch (err) {
-        console.error("Ошибка при получении списка файлов", err);
-      }
-    }
-    async function loadFromDrive(fileId) {
-      if (!accessToken) { alert("Нет access token"); return; }
-      try {
-        const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-          headers: { Authorization: `Bearer ${accessToken}` }
-        });
-        const fileContent = await resp.text();
-        document.querySelector('.canvas-container').innerHTML = fileContent;
-        currentFileId = fileId;
-        alert('Файл загружен из Drive.');
-      } catch (error) { console.error('Ошибка загрузки файла', error); }
-    }
-    async function saveToDrive() {
-      if (!accessToken) { console.warn("Нет access token для сохранения."); return; }
-      if (!currentFileId) { await createFileOnDrive(); }
-      else { await updateFileOnDrive(currentFileId); }
-    }
-    // Глобальная переменная для хранения идентификатора папки
-    let driveFolderId = null;
-    const DRIVE_FOLDER_NAME = "DrawingAppFiles";
-    let selectedDriveFileId = null; // для выделения выбранного файла
-
-    // Функция для поиска или создания папки
-    async function getOrCreateFolder(folderName) {
-      const query = encodeURIComponent(
-        `mimeType='application/vnd.google-apps.folder' and name='${folderName}' and trashed=false`
-      );
-      const url = `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`;
-      const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-      const data = await resp.json();
-      if (data.files && data.files.length > 0) {
-        return data.files[0].id;
-      }
-      // Если папки нет, создаём её
-      const metadata = { name: folderName, mimeType: "application/vnd.google-apps.folder" };
-      const form = new FormData();
-      form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
-      const createResp = await fetch(
-        "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
-        { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: form }
-      );
-      const result = await createResp.json();
-      return result.id;
-    }
-
-    // Обновлённая функция загрузки списка файлов
-    async function listFiles() {
-      if (!accessToken) {
-        console.warn("Нет access token. Сначала войдите.");
-        return;
-      }
+      if (!accessToken) { console.warn("Нет access token. Сначала войдите."); return; }
       const fileListElem = document.getElementById("driveFileList");
       fileListElem.innerHTML = '<p>Загрузка файлов...</p>';
       try {
@@ -482,24 +419,19 @@
         fileListElem.innerHTML = "";
         if (data.files && data.files.length > 0) {
           data.files.forEach(file => {
-            // Создаём контейнер для файла
             const div = document.createElement("div");
             div.classList.add("drive-file");
-            // Сохраняем id файла в data-атрибуте (но не показываем его)
             div.dataset.fileId = file.id;
-            // Создаём элемент для имени файла
             const nameSpan = document.createElement("span");
             nameSpan.textContent = file.name;
             nameSpan.style.cursor = "pointer";
-            // При одиночном клике выбираем файл (выделяем и загружаем содержимое)
             div.addEventListener("click", () => {
-              selectedDriveFileId = file.id;
-              // Выделяем выбранный элемент
+              // Выделяем выбранный файл
               document.querySelectorAll(".drive-file").forEach(item => item.classList.remove("selected"));
               div.classList.add("selected");
+              selectedDriveFileId = file.id;
               loadFileFromDrive(file.id);
             });
-            // Двойной клик по имени позволяет переименовать файл
             nameSpan.addEventListener("dblclick", e => {
               e.stopPropagation();
               const input = document.createElement("input");
@@ -514,9 +446,7 @@
                 nameSpan.textContent = newName;
                 div.replaceChild(nameSpan, input);
               });
-              input.addEventListener("keydown", ev => {
-                if (ev.key === "Enter") input.blur();
-              });
+              input.addEventListener("keydown", ev => { if (ev.key === "Enter") input.blur(); });
             });
             div.appendChild(nameSpan);
             fileListElem.appendChild(div);
@@ -524,56 +454,32 @@
         } else {
           fileListElem.innerHTML = "<p>Файлы не найдены.</p>";
         }
-      } catch (err) {
-        console.error("Ошибка при получении списка файлов", err);
-        fileListElem.innerHTML = "<p>Ошибка загрузки файлов.</p>";
-      }
+      } catch (err) { console.error("Ошибка при получении списка файлов", err); fileListElem.innerHTML = "<p>Ошибка загрузки файлов.</p>"; }
     }
-
-    // Функция переименования файла
     async function renameFileInDrive(fileId, newName) {
       try {
         const metadata = { name: newName };
         await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
           method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json"
-          },
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
           body: JSON.stringify(metadata)
         });
-      } catch (error) {
-        console.error("Ошибка при переименовании файла", error);
-      }
+      } catch (error) { console.error("Ошибка при переименовании файла", error); }
     }
-
-    // Функция, которая вызывается после загрузки содержимого из Google Drive,
-    // чтобы восстановить массив shapes и навесить обработчики на элементы холста.
     function initializeCanvasFromLoadedContent() {
-      // Получаем все сохранённые элементы (фигуры и стрелки)
       const loadedElements = document.querySelectorAll(".shape, .arrow-container");
       shapes = [];
       loadedElements.forEach(el => {
-        // Если data-id отсутствует, генерируем новый идентификатор
         let id = el.dataset.id || generateId();
         el.dataset.id = id;
-        // Определяем тип элемента:
         let type = "other";
-        if (el.classList.contains("arrow-container")) {
-          type = "arrow";
-        } else if (el.classList.contains("shape-text")) {
-          type = "text";
-        } else if (el.classList.contains("circle")) {
-          type = "circle";
-        } else {
-          type = "rectangle";
-        }
-        // Добавляем объект в массив shapes
+        if (el.classList.contains("arrow-container")) type = "arrow";
+        else if (el.classList.contains("shape-text")) type = "text";
+        else if (el.classList.contains("circle")) type = "circle";
+        else type = "rectangle";
         shapes.push({ id: id, element: el, type: type, zIndex: parseInt(el.style.zIndex) || 1 });
-        // Навешиваем обработчики событий для редактирования
         addShapeEventListeners(el);
         if (type === "arrow") {
-          // Для стрелок нужно добавить обработчики для ручек
           addArrowHandleEvents({
             id: id,
             element: el,
@@ -589,13 +495,10 @@
       });
       renderLayers();
     }
-
-
-    // Функция загрузки файла с Drive для редактирования
     async function loadFileFromDrive(fileId) {
+      if (!accessToken) { alert("Нет access token"); return; }
       try {
         const canvasContainer = document.querySelector(".canvas-container");
-        // Показываем визуальный индикатор загрузки
         const spinner = document.createElement("div");
         spinner.textContent = "Загрузка...";
         spinner.style.position = "absolute";
@@ -610,31 +513,19 @@
           headers: { Authorization: `Bearer ${accessToken}` }
         });
         const fileContent = await resp.text();
-        // Заменяем содержимое холста на загруженное
         const canvas = document.querySelector(".canvas");
         canvas.innerHTML = fileContent;
-        initializeCanvasFromLoadedContent()
-        // Удаляем индикатор загрузки
+        initializeCanvasFromLoadedContent();
         canvasContainer.removeChild(spinner);
-        // Сохраняем выбранный файл для дальнейшего редактирования
         currentFileId = fileId;
-      } catch (error) {
-        console.error("Ошибка загрузки файла", error);
-      }
+      } catch (error) { console.error("Ошибка загрузки файла", error); }
     }
-
-    // Функция создания файла с сохранением в папку Drive
     async function createFileOnDrive() {
       try {
-        // Получаем или создаём папку для файлов приложения
         driveFolderId = await getOrCreateFolder(DRIVE_FOLDER_NAME);
         const contentHtml = document.querySelector(".canvas").outerHTML;
         const contentBlob = new Blob([contentHtml], { type: "text/html" });
-        const metadata = {
-          name: "drawing.html",
-          mimeType: "text/html",
-          parents: [driveFolderId]
-        };
+        const metadata = { name: "drawing.html", mimeType: "text/html", parents: [driveFolderId] };
         const form = new FormData();
         form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
         form.append("file", contentBlob);
@@ -645,23 +536,14 @@
         });
         const result = await resp.json();
         currentFileId = result.id;
-        // Вместо alert показываем сообщение в интерфейсе (например, можно обновить список файлов)
         listFiles();
-      } catch (error) {
-        console.error("Ошибка создания файла", error);
-      }
+      } catch (error) { console.error("Ошибка создания файла", error); }
     }
-
-    // Функция обновления (сохранения) файла
     async function updateFileOnDrive(fileId) {
       try {
         const contentHtml = document.querySelector(".canvas").outerHTML;
         const contentBlob = new Blob([contentHtml], { type: "text/html" });
-        const metadata = {
-          name: "drawing.html",
-          mimeType: "text/html",
-          parents: driveFolderId ? [driveFolderId] : []
-        };
+        const metadata = { name: "drawing.html", mimeType: "text/html", parents: driveFolderId ? [driveFolderId] : [] };
         const form = new FormData();
         form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
         form.append("file", contentBlob);
@@ -671,34 +553,27 @@
           body: form
         });
         listFiles();
-      } catch (error) {
-        console.error("Ошибка обновления файла", error);
+      } catch (error) { console.error("Ошибка обновления файла", error); }
+    }
+    // Для автоматического сохранения с задержкой (debounce)
+    let autoSaveTimeout;
+    function scheduleAutoSave() {
+      if (currentFileId) {
+        clearTimeout(autoSaveTimeout);
+        autoSaveTimeout = setTimeout(() => { updateFileOnDrive(currentFileId); }, 2000);
       }
     }
-
     // Обработчики кнопок Drive
-    document.getElementById("driveSave").addEventListener("click", saveToDrive);
-    document.getElementById("driveOpen").addEventListener("click", listFiles);
-    async function saveToDrive() {
-      if (!accessToken) {
-        console.warn("Нет access token для сохранения.");
-        return;
-      }
-      if (!currentFileId) {
-        await createFileOnDrive();
-      } else {
-        await updateFileOnDrive(currentFileId);
-      }
-    }
+    // Убираем кнопки driveSave и driveOpen из интерфейса – сохранение происходит автоматически, а открытие по клику на имя файла
+
+    // Привязываем обработчики входа/выхода
+    document.getElementById('signin_button').onclick = handleSignInClick;
+    document.getElementById('signout_button').onclick = handleSignOutClick;
   </script>
 
   <!-- Основной скрипт для рисования и редактирования -->
   <script>
     "use strict";
-    // Sign in/out
-    document.getElementById('signin_button').onclick = handleSignInClick;
-    document.getElementById('signout_button').onclick = handleSignOutClick;
-
     const canvas = document.querySelector(".canvas");
     const snapToGridCheckbox = document.getElementById("snapToGrid");
     const shapeIcons = document.querySelectorAll(".icon");
@@ -719,43 +594,29 @@
     const textSizeGroup = document.getElementById("textSizeGroup");
     const cpClose = document.getElementById("cpClose");
 
-    // Zoom controls
     const zoomInBtn = document.getElementById("zoomIn");
     const zoomOutBtn = document.getElementById("zoomOut");
     const zoomResetBtn = document.getElementById("zoomReset");
     let canvasScale = 1;
-    zoomInBtn.addEventListener("click", () => {
-      canvasScale = Math.min(canvasScale + 0.1, 2);
-      canvas.style.transform = `scale(${canvasScale})`;
-    });
-    zoomOutBtn.addEventListener("click", () => {
-      canvasScale = Math.max(canvasScale - 0.1, 0.5);
-      canvas.style.transform = `scale(${canvasScale})`;
-    });
-    zoomResetBtn.addEventListener("click", () => {
-      canvasScale = 1;
-      canvas.style.transform = `scale(1)`;
-    });
+    zoomInBtn.addEventListener("click", () => { canvasScale = Math.min(canvasScale + 0.1, 2); canvas.style.transform = `scale(${canvasScale})`; });
+    zoomOutBtn.addEventListener("click", () => { canvasScale = Math.max(canvasScale - 0.1, 0.5); canvas.style.transform = `scale(${canvasScale})`; });
+    zoomResetBtn.addEventListener("click", () => { canvasScale = 1; canvas.style.transform = `scale(1)`; });
 
-    // По умолчанию выбран инструмент "rectangle"
+    // По умолчанию выбран "rectangle"
     let selectedShapeType = "rectangle";
     shapeIcons.forEach(icon => {
       icon.classList.remove("active");
-      if (icon.getAttribute("data-shape") === "rectangle") {
-        icon.classList.add("active");
-      }
+      if (icon.getAttribute("data-shape") === "rectangle") { icon.classList.add("active"); }
     });
 
     const GRID_SIZE = 20;
     let shapes = [];
     let redoStack = [];
     let isDrawing = false;
-    let startX = 0;
-    let startY = 0;
+    let startX = 0, startY = 0;
     let currentShape = null;
     let selectedShape = null;
 
-    // Выбор инструмента
     shapeIcons.forEach(icon => {
       icon.addEventListener("click", () => {
         shapeIcons.forEach(i => i.classList.remove("active"));
@@ -765,7 +626,6 @@
       });
     });
 
-    /* Утилиты */
     function generateId() { return "shape-" + Math.random().toString(36).substr(2, 9); }
     function snap(value, gridSize) { return Math.round(value / gridSize) * gridSize; }
     function hexToRgb(hex) {
@@ -778,8 +638,7 @@
       return result ? "#" +
           ("0" + parseInt(result[1], 10).toString(16)).slice(-2) +
           ("0" + parseInt(result[2], 10).toString(16)).slice(-2) +
-          ("0" + parseInt(result[3], 10).toString(16)).slice(-2)
-          : "";
+          ("0" + parseInt(result[3], 10).toString(16)).slice(-2) : "";
     }
     function getCurrentRotation(el) {
       const st = window.getComputedStyle(el, null);
@@ -791,12 +650,11 @@
       }
       return 0;
     }
-    function getMousePos(e) {
-      const rect = canvas.getBoundingClientRect();
-      return { x: (e.clientX - rect.left) / canvasScale, y: (e.clientY - rect.top) / canvasScale };
+    function getMousePos(e) { 
+      const rect = canvas.getBoundingClientRect(); 
+      return { x: (e.clientX - rect.left) / canvasScale, y: (e.clientY - rect.top) / canvasScale }; 
     }
 
-    /* Слои */
     function renderLayers() {
       layersList.innerHTML = "";
       if (shapes.length === 0) { layersList.appendChild(noLayersMsg); return; }
@@ -815,6 +673,7 @@
           shapes = shapes.filter(s => s.id !== shape.id);
           if (selectedShape && selectedShape.id === shape.id) { selectedShape = null; hideColorPanel(); }
           renderLayers();
+          scheduleAutoSave();
         });
         div.appendChild(delBtn);
         if (selectedShape && selectedShape.id === shape.id) { div.classList.add("selected"); }
@@ -825,7 +684,7 @@
           e.preventDefault();
           const fromIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
           const toIndex = index;
-          if (fromIndex !== toIndex) { const moved = shapes.splice(fromIndex, 1)[0]; shapes.splice(toIndex, 0, moved); reassignZIndices(); }
+          if (fromIndex !== toIndex) { const moved = shapes.splice(fromIndex, 1)[0]; shapes.splice(toIndex, 0, moved); reassignZIndices(); scheduleAutoSave(); }
         });
         layersList.appendChild(div);
       });
@@ -845,7 +704,7 @@
       renderLayers();
     }
 
-    /* Панель управления объектом – появляется над выделённым объектом */
+    // Панель управления объектом – появляется над выделённым объектом
     function showColorPanel(shapeObj) {
       const compStyle = window.getComputedStyle(shapeObj.element);
       // Fill
@@ -863,8 +722,8 @@
         cpBorderOpacity.value = borderMatch[4] ? parseFloat(borderMatch[4]) : 1;
       } else { cpBorderColor.value = "#000000"; cpBorderOpacity.value = "1"; }
       cpBorderWidth.value = parseInt(compStyle.borderWidth) || 1;
-      cpWidth.value = parseInt(compStyle.width) || 0;
-      cpHeight.value = parseInt(compStyle.height) || 0;
+      cpWidth.value = parseInt(compStyle.width) || shapeObj.element.offsetWidth;
+      cpHeight.value = parseInt(compStyle.height) || shapeObj.element.offsetHeight;
       cpAngle.value = getCurrentRotation(shapeObj.element);
       if (shapeObj.type === "text") {
         textSizeGroup.style.display = "flex";
@@ -961,6 +820,7 @@
       function mouseUp() {
         document.removeEventListener("mousemove", mouseMove);
         document.removeEventListener("mouseup", mouseUp);
+        scheduleAutoSave();
       }
       document.addEventListener("mousemove", mouseMove);
       document.addEventListener("mouseup", mouseUp);
@@ -994,10 +854,7 @@
           arrowObj.startY = snapToGridCheckbox.checked ? snap(pos.y, GRID_SIZE) : pos.y;
           updateArrowUI(arrowObj);
         }
-        function onMouseUp() {
-          document.removeEventListener("mousemove", onMouseMove);
-          document.removeEventListener("mouseup", onMouseUp);
-        }
+        function onMouseUp() { document.removeEventListener("mousemove", onMouseMove); document.removeEventListener("mouseup", onMouseUp); scheduleAutoSave(); }
         document.addEventListener("mousemove", onMouseMove);
         document.addEventListener("mouseup", onMouseUp);
       });
@@ -1010,10 +867,7 @@
           arrowObj.endY = snapToGridCheckbox.checked ? snap(pos.y, GRID_SIZE) : pos.y;
           updateArrowUI(arrowObj);
         }
-        function onMouseUp() {
-          document.removeEventListener("mousemove", onMouseMove);
-          document.removeEventListener("mouseup", onMouseUp);
-        }
+        function onMouseUp() { document.removeEventListener("mousemove", onMouseMove); document.removeEventListener("mouseup", onMouseUp); scheduleAutoSave(); }
         document.addEventListener("mousemove", onMouseMove);
         document.addEventListener("mouseup", onMouseUp);
       });
@@ -1071,29 +925,21 @@
         updateSelectionUI();
         showColorPanel(selectedShape);
         if (selectedShape.type === "arrow") return;
-        const offsetX = e.offsetX;
-        const offsetY = e.offsetY;
+        const offsetX = e.offsetX, offsetY = e.offsetY;
         function mouseMove(ev) {
           const pos = getMousePos(ev);
-          let left = pos.x - offsetX;
-          let top = pos.y - offsetY;
-          if (snapToGridCheckbox.checked) {
-            left = snap(left, GRID_SIZE);
-            top = snap(top, GRID_SIZE);
-          }
+          let left = pos.x - offsetX, top = pos.y - offsetY;
+          if (snapToGridCheckbox.checked) { left = snap(left, GRID_SIZE); top = snap(top, GRID_SIZE); }
           selectedShape.element.style.left = left + "px";
           selectedShape.element.style.top = top + "px";
           showColorPanel(selectedShape);
         }
-        function mouseUp() {
-          document.removeEventListener("mousemove", mouseMove);
-          document.removeEventListener("mouseup", mouseUp);
-        }
+        function mouseUp() { document.removeEventListener("mousemove", mouseMove); document.removeEventListener("mouseup", mouseUp); scheduleAutoSave(); }
         document.addEventListener("mousemove", mouseMove);
         document.addEventListener("mouseup", mouseUp);
       });
     }
-    /* Рисование */
+    /* Рисование фигур */
     canvas.addEventListener("mousedown", e => {
       if (selectedShapeType === "pointer") return;
       if (selectedShapeType === "arrow") { createArrow(e); return; }
@@ -1114,12 +960,7 @@
       let top = Math.min(startY, pos.y);
       let width = Math.abs(pos.x - startX);
       let height = Math.abs(pos.y - startY);
-      if (snapToGridCheckbox.checked) {
-        left = snap(left, GRID_SIZE);
-        top = snap(top, GRID_SIZE);
-        width = snap(width, GRID_SIZE);
-        height = snap(height, GRID_SIZE);
-      }
+      if (snapToGridCheckbox.checked) { left = snap(left, GRID_SIZE); top = snap(top, GRID_SIZE); width = snap(width, GRID_SIZE); height = snap(height, GRID_SIZE); }
       currentShape.element.style.left = left + "px";
       currentShape.element.style.top = top + "px";
       currentShape.element.style.width = width + "px";
@@ -1136,13 +977,10 @@
         currentShape = null;
       }
       reassignZIndices();
+      scheduleAutoSave();
     });
     canvas.addEventListener("mousedown", e => {
-      if (e.target === canvas) {
-        selectedShape = null;
-        updateSelectionUI();
-        hideColorPanel();
-      }
+      if (e.target === canvas) { selectedShape = null; updateSelectionUI(); hideColorPanel(); }
     });
     /* Resize / Rotate ручки */
     function addResizeHandle(el) {
@@ -1165,20 +1003,14 @@
             if (Math.abs(dx) > Math.abs(dy)) { newH = newW / ratio; }
             else { newW = newH * ratio; }
           }
-          if (snapToGridCheckbox.checked) {
-            newW = snap(newW, GRID_SIZE);
-            newH = snap(newH, GRID_SIZE);
-          }
+          if (snapToGridCheckbox.checked) { newW = snap(newW, GRID_SIZE); newH = snap(newH, GRID_SIZE); }
           el.style.width = newW + "px";
           el.style.height = newH + "px";
           const s = shapes.find(s => s.element === el);
           if (s) { cpWidth.value = newW; cpHeight.value = newH; }
           showColorPanel(shapes.find(s => s.element === el));
         }
-        function onMouseUp() {
-          document.removeEventListener("mousemove", onMouseMove);
-          document.removeEventListener("mouseup", onMouseUp);
-        }
+        function onMouseUp() { document.removeEventListener("mousemove", onMouseMove); document.removeEventListener("mouseup", onMouseUp); scheduleAutoSave(); }
         document.addEventListener("mousemove", onMouseMove);
         document.addEventListener("mouseup", onMouseUp);
       });
@@ -1201,10 +1033,7 @@
           el.style.transform = `rotate(${angle}deg)`;
           showColorPanel(shapes.find(s => s.element === el));
         }
-        function onMouseUp() {
-          document.removeEventListener("mousemove", onMouseMove);
-          document.removeEventListener("mouseup", onMouseUp);
-        }
+        function onMouseUp() { document.removeEventListener("mousemove", onMouseMove); document.removeEventListener("mouseup", onMouseUp); scheduleAutoSave(); }
         document.addEventListener("mousemove", onMouseMove);
         document.addEventListener("mouseup", onMouseUp);
       });
@@ -1217,6 +1046,7 @@
         last.element.remove();
         if (selectedShape && selectedShape.id === last.id) { selectedShape = null; hideColorPanel(); }
         renderLayers();
+        scheduleAutoSave();
       }
     });
     redoButton.addEventListener("click", () => {
@@ -1226,6 +1056,7 @@
         canvas.appendChild(shapeObj.element);
         if (shapeObj.type === "arrow") { addArrowHandleEvents(shapeObj); updateArrowUI(shapeObj); }
         reassignZIndices();
+        scheduleAutoSave();
       }
     });
   </script>
