@@ -266,7 +266,7 @@
   <div class="sidebar">
     <div class="sidebar-header">
       <h2>Инструменты</h2>
-      <div class="version">Version Final.1.0</div>
+      <div class="version">Version 1.0.1</div>
     </div>
     <div class="toolbar">
       <!-- Порядок: Указатель, Квадрат, Круг, Стрелка, Текст -->
@@ -437,11 +437,47 @@
       if (!currentFileId) { await createFileOnDrive(); }
       else { await updateFileOnDrive(currentFileId); }
     }
+    // Глобальная переменная для хранения идентификатора папки
+    let driveFolderId = null;
+    const DRIVE_FOLDER_NAME = "DrawingAppFiles";
+
+    // Функция для получения или создания папки в Google Drive
+    async function getOrCreateFolder(folderName) {
+      // Поиск папки по имени
+      const query = encodeURIComponent(`mimeType='application/vnd.google-apps.folder' and name='${folderName}' and trashed=false`);
+      const url = `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`;
+      const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+      const data = await resp.json();
+      if (data.files && data.files.length > 0) {
+        return data.files[0].id;
+      }
+      // Если папка не найдена, создаём её
+      const metadata = {
+        name: folderName,
+        mimeType: "application/vnd.google-apps.folder"
+      };
+      const form = new FormData();
+      form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+      const createResp = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: form
+      });
+      const result = await createResp.json();
+      return result.id;
+    }
+
     async function createFileOnDrive() {
       try {
+        // Получаем папку (создаём, если отсутствует)
+        driveFolderId = await getOrCreateFolder(DRIVE_FOLDER_NAME);
         const contentHtml = document.querySelector('.canvas').outerHTML;
         const contentBlob = new Blob([contentHtml], { type: 'text/html' });
-        const metadata = { name: 'drawing.html', mimeType: 'text/html' };
+        const metadata = {
+          name: 'drawing.html',
+          mimeType: 'text/html',
+          parents: [driveFolderId] // сохраняем в нашей папке
+        };
         const form = new FormData();
         form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
         form.append('file', contentBlob);
@@ -454,13 +490,20 @@
         currentFileId = result.id;
         alert('Файл сохранён в Drive: ' + currentFileId);
         listFiles();
-      } catch (error) { console.error('Ошибка создания файла', error); }
+      } catch (error) {
+        console.error('Ошибка создания файла', error);
+      }
     }
+
     async function updateFileOnDrive(fileId) {
       try {
         const contentHtml = document.querySelector('.canvas').outerHTML;
         const contentBlob = new Blob([contentHtml], { type: 'text/html' });
-        const metadata = { name: 'drawing.html', mimeType: 'text/html' };
+        const metadata = {
+          name: 'drawing.html',
+          mimeType: 'text/html',
+          parents: driveFolderId ? [driveFolderId] : [] // используем существующую папку, если есть
+        };
         const form = new FormData();
         form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
         form.append('file', contentBlob);
@@ -471,7 +514,9 @@
         });
         alert('Файл обновлён в Drive');
         listFiles();
-      } catch (error) { console.error('Ошибка обновления файла', error); }
+      } catch (error) {
+        console.error('Ошибка обновления файла', error);
+      }
     }
     document.getElementById("driveSave").addEventListener("click", saveToDrive);
     document.getElementById("driveOpen").addEventListener("click", listFiles);
