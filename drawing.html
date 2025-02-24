@@ -22,46 +22,39 @@
       --transition-speed: 0.2s;
       --sidebar-width: 320px;
     }
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    html, body {
-      height: 100%;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
     body {
       display: flex;
       background: var(--color-bg);
       font-family: var(--font-family);
       color: var(--color-text);
     }
-    /* ----------------- Левая панель ----------------- */
+    /* -------------- Левая панель -------------- */
     .sidebar {
       flex: 0 0 var(--sidebar-width);
       background: var(--color-sidebar);
       border-right: 1px solid var(--color-border);
+      padding: 16px;
       display: flex;
       flex-direction: column;
-      padding: 16px;
       gap: 20px;
       box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
     }
-    /* Заголовок инструментов и версия */
     .sidebar-header {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
+      position: sticky;
+      top: 0;
+      background: var(--color-sidebar);
+      padding-bottom: 8px;
+      z-index: 10;
     }
-    .sidebar-header h2 {
-      font-size: 1.2rem;
-      color: var(--color-primary);
-    }
-    .version {
-      font-size: 0.85rem;
-      color: #999;
-    }
-    /* Панель инструментов (иконки) */
+    .sidebar-header h2 { font-size: 1.2rem; color: var(--color-primary); }
+    .version { font-size: 0.85rem; color: #999; }
+    /* Панель инструментов – на русском */
     .toolbar {
       display: flex;
       gap: 8px;
@@ -80,31 +73,16 @@
       transition: transform var(--transition-speed), background var(--transition-speed), border-color var(--transition-speed);
       user-select: none;
     }
-    .icon:hover {
-      background: var(--color-primary);
-      border-color: var(--color-primary);
-      transform: scale(1.07);
-    }
-    .icon.active {
-      background: var(--color-accent);
-      border-color: var(--color-accent);
-      transform: scale(1.07);
-    }
+    .icon:hover { background: var(--color-primary); border-color: var(--color-primary); transform: scale(1.07); }
+    .icon.active { background: var(--color-accent); border-color: var(--color-accent); transform: scale(1.07); }
     .icon svg {
-      width: 24px;
-      height: 24px;
+      width: 24px; height: 24px;
       fill: var(--color-text);
       transition: fill var(--transition-speed);
     }
-    .icon:hover svg, .icon.active svg {
-      fill: #fff;
-    }
-    /* Секция «Слои» – заголовок и кнопки Undo/Redo */
-    .layers-header {
-      font-size: 1.2rem;
-      color: var(--color-primary);
-      margin-bottom: 4px;
-    }
+    .icon:hover svg, .icon.active svg { fill: #fff; }
+    /* Секция "Слои" */
+    .layers-header { font-size: 1.2rem; color: var(--color-primary); margin-bottom: 4px; }
     .layer-controls {
       display: flex;
       gap: 8px;
@@ -122,21 +100,14 @@
       cursor: pointer;
       transition: transform var(--transition-speed), background var(--transition-speed), border-color var(--transition-speed);
     }
-    .btn-undo-redo:hover {
-      background: var(--color-primary);
-      border-color: var(--color-primary);
-      transform: scale(1.07);
-    }
+    .btn-undo-redo:hover { background: var(--color-primary); border-color: var(--color-primary); transform: scale(1.07); }
     .btn-undo-redo svg {
       width: 24px;
       height: 24px;
       fill: var(--color-text);
       transition: fill var(--transition-speed);
     }
-    .btn-undo-redo:hover svg {
-      fill: #fff;
-    }
-    /* Список слоёв */
+    .btn-undo-redo:hover svg { fill: #fff; }
     .layers {
       flex: 1;
       border: 1px solid var(--color-border);
@@ -155,14 +126,8 @@
       cursor: move;
       transition: background var(--transition-speed), transform var(--transition-speed);
     }
-    .layer-item:hover {
-      background: #e2e3e5;
-      transform: scale(1.02);
-    }
-    .layer-item.selected {
-      background: var(--color-accent);
-      color: #fff;
-    }
+    .layer-item:hover { background: #e2e3e5; transform: scale(1.02); }
+    .layer-item.selected { background: var(--color-accent); color: #fff; }
     .delete-layer-button {
       margin-left: auto;
       background: var(--color-danger);
@@ -173,24 +138,18 @@
       cursor: pointer;
       transition: background var(--transition-speed);
     }
-    .delete-layer-button:hover {
-      background: #b91c1c;
-    }
-    #noLayersMsg {
-      color: #666;
-      text-align: center;
-      margin: 6px 0;
-    }
-    /* ----------------- Холст ----------------- */
+    .delete-layer-button:hover { background: #b91c1c; }
+    #noLayersMsg { color: #666; text-align: center; margin: 6px 0; }
+    /* -------------- Холст -------------- */
     .canvas-container {
       flex: 1;
+      position: relative;
       display: flex;
       justify-content: center;
       align-items: center;
       padding: 16px;
       background: var(--color-bg);
       overflow: auto;
-      position: relative;
     }
     .canvas {
       width: 900px;
@@ -200,7 +159,29 @@
       border-radius: 8px;
       position: relative;
       box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+      overflow: visible;
+      transform-origin: 0 0;
+      transition: transform 0.2s ease;
     }
+    /* Zoom Controls */
+    .zoom-controls {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      display: flex;
+      gap: 8px;
+      z-index: 1100;
+    }
+    .zoom-controls button {
+      background: var(--color-primary);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 6px 8px;
+      cursor: pointer;
+      transition: background var(--transition-speed);
+    }
+    .zoom-controls button:hover { background: var(--color-accent); }
     /* Фигуры */
     .shape {
       position: absolute;
@@ -212,12 +193,8 @@
       box-sizing: border-box;
       transition: box-shadow var(--transition-speed);
     }
-    .shape:hover {
-      box-shadow: 0 0 4px rgba(0,0,0,0.15);
-    }
-    .circle {
-      border-radius: 50%;
-    }
+    .shape:hover { box-shadow: 0 0 4px rgba(0,0,0,0.15); }
+    .circle { border-radius: 50%; }
     .shape-text {
       min-width: 30px;
       min-height: 20px;
@@ -226,39 +203,19 @@
       outline: none;
       cursor: text;
     }
-    .selected {
-      outline: 2px dashed var(--color-secondary);
-      outline-offset: 2px;
-    }
+    .selected { outline: 2px dashed var(--color-secondary); outline-offset: 2px; }
     /* Ручки resize/rotate */
-    .resize-handle,
-    .rotate-handle {
-      display: none;
-    }
-    .selected .resize-handle,
-    .selected .rotate-handle {
-      display: block;
-    }
+    .resize-handle, .rotate-handle { display: none; }
+    .selected .resize-handle, .selected .rotate-handle { display: block; }
     .resize-handle, .rotate-handle {
       background: var(--color-primary);
       border-radius: 50%;
       width: 12px;
       height: 12px;
     }
-    .resize-handle {
-      position: absolute;
-      right: -6px;
-      bottom: -6px;
-      cursor: nwse-resize;
-    }
-    .rotate-handle {
-      position: absolute;
-      top: -20px;
-      left: 50%;
-      transform: translateX(-50%);
-      cursor: grab;
-    }
-    /* Панель управления (однострочная) */
+    .resize-handle { position: absolute; right: -6px; bottom: -6px; cursor: nwse-resize; }
+    .rotate-handle { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); cursor: grab; }
+    /* Панель управления объектом – однострочная, появляется над объектом */
     .color-panel {
       position: absolute;
       background: var(--color-panel);
@@ -267,21 +224,16 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
       padding: 4px 8px;
       z-index: 1000;
-      display: flex;
+      display: none;
       align-items: center;
       gap: 8px;
       font-size: 0.85rem;
     }
-    .color-panel label {
-      margin-right: 4px;
-      white-space: nowrap;
-      color: #555;
-    }
+    .color-panel .field-group { display: flex; align-items: center; gap: 4px; }
+    .color-panel label { white-space: nowrap; color: #555; }
     .color-panel input[type="color"],
     .color-panel input[type="range"],
-    .color-panel input[type="number"] {
-      max-width: 70px;
-    }
+    .color-panel input[type="number"] { max-width: 70px; }
     .color-panel button {
       background: var(--color-accent);
       border: none;
@@ -291,29 +243,11 @@
       cursor: pointer;
       transition: background var(--transition-speed);
     }
-    .color-panel button:hover {
-      background: var(--color-primary);
-    }
-    /* Стрелка и её ручки */
-    .arrow-container {
-      position: absolute;
-      pointer-events: auto;
-    }
-    .arrow-shaft {
-      position: absolute;
-      top: 50%;
-      left: 0;
-      height: 2px;
-      transform: translateY(-50%);
-    }
-    .arrow-head {
-      position: absolute;
-      width: 0;
-      height: 0;
-      border-top: 5px solid transparent;
-      border-bottom: 5px solid transparent;
-      transform: translateY(-50%);
-    }
+    .color-panel button:hover { background: var(--color-primary); }
+    /* Стрелка и ручки для стрелки */
+    .arrow-container { position: absolute; pointer-events: auto; }
+    .arrow-shaft { position: absolute; top: 50%; left: 0; height: 2px; transform: translateY(-50%); }
+    .arrow-head { position: absolute; width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; transform: translateY(-50%); }
     .arrow-handle {
       position: absolute;
       width: 12px;
@@ -324,9 +258,7 @@
       cursor: move;
       display: none;
     }
-    .arrow-container.selected .arrow-handle {
-      display: block;
-    }
+    .arrow-container.selected .arrow-handle { display: block; }
   </style>
 </head>
 <body>
@@ -337,12 +269,13 @@
       <div class="version">Version Final.1.0</div>
     </div>
     <div class="toolbar">
-      <div class="icon pointer active" data-shape="pointer" title="Указатель">
+      <!-- Порядок: Указатель, Квадрат, Круг, Стрелка, Текст -->
+      <div class="icon pointer" data-shape="pointer" title="Указатель">
         <svg viewBox="0 0 16 16">
           <path d="M2 2v12l4-4 3 4 2-2-3-4 4-4H2z"/>
         </svg>
       </div>
-      <div class="icon rectangle" data-shape="rectangle" title="Прямоугольник">
+      <div class="icon rectangle active" data-shape="rectangle" title="Квадрат">
         <svg viewBox="0 0 16 16">
           <rect x="3" y="3" width="10" height="10" rx="1" ry="1"/>
         </svg>
@@ -372,7 +305,6 @@
     <div class="sidebar-header">
       <h2>Слои</h2>
     </div>
-    <!-- Кнопки Undo/Redo под заголовком "Слои" -->
     <div class="layer-controls">
       <div id="undo" class="btn-undo-redo" title="Отменить (Undo)">
         <svg viewBox="0 0 24 24">
@@ -390,36 +322,40 @@
     </div>
     <div id="driveControls" class="form-group">
       <label>Интеграция с Google Drive</label>
-      <button id="signin_button">Войти</button>
-      <button id="signout_button" style="display:none;">Выйти</button>
-      <div id="driveFileList"></div>
+      <div style="display:flex; gap:8px; margin-bottom:4px;">
+        <button id="signin_button">Войти</button>
+        <button id="signout_button" style="display:none;">Выйти</button>
+        <button id="driveSave">Сохранить</button>
+        <button id="driveOpen">Открыть</button>
+      </div>
+      <div id="driveFileList" style="max-height:120px; overflow-y:auto;"></div>
     </div>
   </div>
 
-  <!-- Холст -->
+  <!-- Холст и Zoom Controls -->
   <div class="canvas-container">
     <div class="canvas"></div>
-    <!-- Панель управления (однострочная) -->
+    <div class="zoom-controls">
+      <button id="zoomOut">–</button>
+      <button id="zoomReset">100%</button>
+      <button id="zoomIn">+</button>
+    </div>
+    <!-- Панель управления объектом – однострочная, появляется над объектом при выделении -->
     <div id="colorPanel" class="color-panel">
-      <label>Fill:</label>
-      <input type="color" id="cpFillColor" value="#ff0000" />
-      <label>Op:</label>
-      <input type="range" id="cpFillOpacity" min="0" max="1" step="0.1" value="1" />
-      <label>Border:</label>
-      <input type="color" id="cpBorderColor" value="#000000" />
-      <label>Op:</label>
-      <input type="range" id="cpBorderOpacity" min="0" max="1" step="0.1" value="1" />
-      <label>BW:</label>
-      <input type="number" id="cpBorderWidth" min="0" max="20" value="1" />
-      <label>W:</label>
-      <input type="number" id="cpWidth" min="0" max="2000" value="100" />
-      <label>H:</label>
-      <input type="number" id="cpHeight" min="0" max="2000" value="100" />
-      <button id="cpClose">Close</button>
+      <div class="field-group"><label>Fill:</label><input type="color" id="cpFillColor" value="#ff0000" /></div>
+      <div class="field-group"><label>Op:</label><input type="range" id="cpFillOpacity" min="0" max="1" step="0.1" value="1" /></div>
+      <div class="field-group"><label>Border:</label><input type="color" id="cpBorderColor" value="#000000" /></div>
+      <div class="field-group"><label>Op:</label><input type="range" id="cpBorderOpacity" min="0" max="1" step="0.1" value="1" /></div>
+      <div class="field-group"><label>BW:</label><input type="number" id="cpBorderWidth" min="0" max="20" value="1" /></div>
+      <div class="field-group"><label>W:</label><input type="number" id="cpWidth" min="0" max="2000" value="100" /></div>
+      <div class="field-group"><label>H:</label><input type="number" id="cpHeight" min="0" max="2000" value="100" /></div>
+      <div class="field-group"><label>Угол:</label><input type="number" id="cpAngle" min="0" max="360" value="0" /></div>
+      <div class="field-group" id="textSizeGroup" style="display:none;"><label>Размер текста:</label><input type="number" id="cpFontSize" min="8" max="100" value="16" /></div>
+      <button id="cpClose">Закрыть</button>
     </div>
   </div>
 
-  <!-- Скрипты Google Drive (без изменений) -->
+  <!-- Скрипты Google Drive -->
   <script>
     "use strict";
     const CLIENT_ID = "158627123477-4m4d7dqms8ndlmfq4mejhdguj1jte08m.apps.googleusercontent.com";
@@ -473,23 +409,19 @@
             const div = document.createElement('div');
             div.classList.add('drive-file');
             div.textContent = `${file.name} (${file.id})`;
+            div.style.cursor = "pointer";
             div.addEventListener('click', () => loadFromDrive(file.id));
             fileListElem.appendChild(div);
           });
         } else {
           fileListElem.innerHTML = 'Файлы не найдены.';
         }
-        document.getElementById('signin_button').style.display = 'none';
-        document.getElementById('signout_button').style.display = 'block';
       } catch (err) {
         console.error("Ошибка при получении списка файлов", err);
       }
     }
     async function loadFromDrive(fileId) {
-      if (!accessToken) {
-        alert("Нет access token");
-        return;
-      }
+      if (!accessToken) { alert("Нет access token"); return; }
       try {
         const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
           headers: { Authorization: `Bearer ${accessToken}` }
@@ -498,20 +430,12 @@
         document.querySelector('.canvas-container').innerHTML = fileContent;
         currentFileId = fileId;
         alert('Файл загружен из Drive.');
-      } catch (error) {
-        console.error('Ошибка загрузки файла', error);
-      }
+      } catch (error) { console.error('Ошибка загрузки файла', error); }
     }
     async function saveToDrive() {
-      if (!accessToken) {
-        console.warn("Нет access token для сохранения.");
-        return;
-      }
-      if (!currentFileId) {
-        await createFileOnDrive();
-      } else {
-        await updateFileOnDrive(currentFileId);
-      }
+      if (!accessToken) { console.warn("Нет access token для сохранения."); return; }
+      if (!currentFileId) { await createFileOnDrive(); }
+      else { await updateFileOnDrive(currentFileId); }
     }
     async function createFileOnDrive() {
       try {
@@ -528,10 +452,9 @@
         });
         const result = await resp.json();
         currentFileId = result.id;
-        alert('Файл создан в Drive: ' + currentFileId);
-      } catch (error) {
-        console.error('Ошибка создания файла', error);
-      }
+        alert('Файл сохранён в Drive: ' + currentFileId);
+        listFiles();
+      } catch (error) { console.error('Ошибка создания файла', error); }
     }
     async function updateFileOnDrive(fileId) {
       try {
@@ -546,25 +469,24 @@
           headers: { Authorization: `Bearer ${accessToken}` },
           body: form
         });
-      } catch (error) {
-        console.error('Ошибка обновления файла', error);
-      }
+        alert('Файл обновлён в Drive');
+        listFiles();
+      } catch (error) { console.error('Ошибка обновления файла', error); }
     }
+    document.getElementById("driveSave").addEventListener("click", saveToDrive);
+    document.getElementById("driveOpen").addEventListener("click", listFiles);
   </script>
 
-  <!-- Основной скрипт для рисования и редактирования фигур -->
+  <!-- Основной скрипт для рисования и редактирования -->
   <script>
     "use strict";
     const canvas = document.querySelector(".canvas");
     const snapToGridCheckbox = document.getElementById("snapToGrid");
     const shapeIcons = document.querySelectorAll(".icon");
-
     const layersList = document.getElementById("layersList");
     const noLayersMsg = document.getElementById("noLayersMsg");
-
     const undoButton = document.getElementById("undo");
     const redoButton = document.getElementById("redo");
-
     const colorPanel = document.getElementById("colorPanel");
     const cpFillColor = document.getElementById("cpFillColor");
     const cpFillOpacity = document.getElementById("cpFillOpacity");
@@ -573,10 +495,39 @@
     const cpBorderWidth = document.getElementById("cpBorderWidth");
     const cpWidth = document.getElementById("cpWidth");
     const cpHeight = document.getElementById("cpHeight");
+    const cpAngle = document.getElementById("cpAngle");
+    const cpFontSize = document.getElementById("cpFontSize");
+    const textSizeGroup = document.getElementById("textSizeGroup");
     const cpClose = document.getElementById("cpClose");
 
+    // Zoom controls
+    const zoomInBtn = document.getElementById("zoomIn");
+    const zoomOutBtn = document.getElementById("zoomOut");
+    const zoomResetBtn = document.getElementById("zoomReset");
+    let canvasScale = 1;
+    zoomInBtn.addEventListener("click", () => {
+      canvasScale = Math.min(canvasScale + 0.1, 2);
+      canvas.style.transform = `scale(${canvasScale})`;
+    });
+    zoomOutBtn.addEventListener("click", () => {
+      canvasScale = Math.max(canvasScale - 0.1, 0.5);
+      canvas.style.transform = `scale(${canvasScale})`;
+    });
+    zoomResetBtn.addEventListener("click", () => {
+      canvasScale = 1;
+      canvas.style.transform = `scale(1)`;
+    });
+
+    // По умолчанию выбран инструмент "rectangle"
+    let selectedShapeType = "rectangle";
+    shapeIcons.forEach(icon => {
+      icon.classList.remove("active");
+      if (icon.getAttribute("data-shape") === "rectangle") {
+        icon.classList.add("active");
+      }
+    });
+
     const GRID_SIZE = 20;
-    let selectedShapeType = "pointer";
     let shapes = [];
     let redoStack = [];
     let isDrawing = false;
@@ -585,7 +536,7 @@
     let currentShape = null;
     let selectedShape = null;
 
-    /* Выбор инструмента */
+    // Выбор инструмента
     shapeIcons.forEach(icon => {
       icon.addEventListener("click", () => {
         shapeIcons.forEach(i => i.classList.remove("active"));
@@ -596,50 +547,40 @@
     });
 
     /* Утилиты */
-    function generateId() {
-      return 'shape-' + Math.random().toString(36).substr(2, 9);
-    }
-    function snap(value, gridSize) {
-      return Math.round(value / gridSize) * gridSize;
-    }
+    function generateId() { return "shape-" + Math.random().toString(36).substr(2, 9); }
+    function snap(value, gridSize) { return Math.round(value / gridSize) * gridSize; }
     function hexToRgb(hex) {
       const bigint = parseInt(hex.replace("#", ""), 16);
-      return {
-        r: (bigint >> 16) & 255,
-        g: (bigint >> 8) & 255,
-        b: bigint & 255
-      };
+      return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 };
     }
     function rgbToHex(rgb) {
       if (!rgb) return "";
       const result = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/i.exec(rgb);
-      return result
-        ? "#" +
+      return result ? "#" +
           ("0" + parseInt(result[1], 10).toString(16)).slice(-2) +
           ("0" + parseInt(result[2], 10).toString(16)).slice(-2) +
           ("0" + parseInt(result[3], 10).toString(16)).slice(-2)
-        : "";
+          : "";
     }
     function getCurrentRotation(el) {
       const st = window.getComputedStyle(el, null);
       const tr = st.getPropertyValue("transform");
       if (tr && tr !== "none") {
         const values = tr.split("(")[1].split(")")[0].split(",");
-        const a = parseFloat(values[0]);
-        const b = parseFloat(values[1]);
-        const angle = Math.round(Math.atan2(b, a) * (180 / Math.PI));
-        return angle;
+        const a = parseFloat(values[0]), b = parseFloat(values[1]);
+        return Math.round(Math.atan2(b, a) * (180 / Math.PI));
       }
       return 0;
+    }
+    function getMousePos(e) {
+      const rect = canvas.getBoundingClientRect();
+      return { x: (e.clientX - rect.left) / canvasScale, y: (e.clientY - rect.top) / canvasScale };
     }
 
     /* Слои */
     function renderLayers() {
       layersList.innerHTML = "";
-      if (shapes.length === 0) {
-        layersList.appendChild(noLayersMsg);
-        return;
-      }
+      if (shapes.length === 0) { layersList.appendChild(noLayersMsg); return; }
       shapes.forEach((shape, index) => {
         const div = document.createElement("div");
         div.classList.add("layer-item");
@@ -653,39 +594,25 @@
           e.stopPropagation();
           shape.element.remove();
           shapes = shapes.filter(s => s.id !== shape.id);
-          if (selectedShape && selectedShape.id === shape.id) {
-            selectedShape = null;
-            hideColorPanel();
-          }
+          if (selectedShape && selectedShape.id === shape.id) { selectedShape = null; hideColorPanel(); }
           renderLayers();
         });
         div.appendChild(delBtn);
-        if (selectedShape && selectedShape.id === shape.id) {
-          div.classList.add("selected");
-        }
+        if (selectedShape && selectedShape.id === shape.id) { div.classList.add("selected"); }
         div.addEventListener("click", () => selectShape(shape));
-        div.addEventListener("dragstart", e => {
-          e.dataTransfer.setData("text/plain", String(index));
-        });
+        div.addEventListener("dragstart", e => { e.dataTransfer.setData("text/plain", String(index)); });
         div.addEventListener("dragover", e => e.preventDefault());
         div.addEventListener("drop", e => {
           e.preventDefault();
           const fromIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
           const toIndex = index;
-          if (fromIndex !== toIndex) {
-            const moved = shapes.splice(fromIndex, 1)[0];
-            shapes.splice(toIndex, 0, moved);
-            reassignZIndices();
-          }
+          if (fromIndex !== toIndex) { const moved = shapes.splice(fromIndex, 1)[0]; shapes.splice(toIndex, 0, moved); reassignZIndices(); }
         });
         layersList.appendChild(div);
       });
     }
     function reassignZIndices() {
-      shapes.forEach((s, i) => {
-        s.zIndex = i + 1;
-        s.element.style.zIndex = s.zIndex;
-      });
+      shapes.forEach((s, i) => { s.zIndex = i + 1; s.element.style.zIndex = s.zIndex; });
       renderLayers();
     }
     function selectShape(shapeObj) {
@@ -695,13 +622,11 @@
     }
     function updateSelectionUI() {
       shapes.forEach(s => s.element.classList.remove("selected"));
-      if (selectedShape) {
-        selectedShape.element.classList.add("selected");
-      }
+      if (selectedShape) { selectedShape.element.classList.add("selected"); }
       renderLayers();
     }
 
-    /* Панель свойств – теперь однострочная и над фигурой */
+    /* Панель управления объектом – появляется над выделённым объектом */
     function showColorPanel(shapeObj) {
       const compStyle = window.getComputedStyle(shapeObj.element);
       // Fill
@@ -710,53 +635,42 @@
       if (fillMatch) {
         cpFillColor.value = rgbToHex(`rgb(${fillMatch[1]},${fillMatch[2]},${fillMatch[3]})`);
         cpFillOpacity.value = fillMatch[4] ? parseFloat(fillMatch[4]) : 1;
-      } else {
-        cpFillColor.value = "#ff0000";
-        cpFillOpacity.value = "1";
-      }
+      } else { cpFillColor.value = "#ff0000"; cpFillOpacity.value = "1"; }
       // Border
       const bc = compStyle.borderColor;
       const borderMatch = bc.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
       if (borderMatch) {
         cpBorderColor.value = rgbToHex(`rgb(${borderMatch[1]},${borderMatch[2]},${borderMatch[3]})`);
         cpBorderOpacity.value = borderMatch[4] ? parseFloat(borderMatch[4]) : 1;
-      } else {
-        cpBorderColor.value = "#000000";
-        cpBorderOpacity.value = "1";
-      }
+      } else { cpBorderColor.value = "#000000"; cpBorderOpacity.value = "1"; }
       cpBorderWidth.value = parseInt(compStyle.borderWidth) || 1;
-      // Размеры (ширина и высота)
       cpWidth.value = parseInt(compStyle.width) || 0;
       cpHeight.value = parseInt(compStyle.height) || 0;
-      // Позиция: выше фигуры
+      cpAngle.value = getCurrentRotation(shapeObj.element);
+      if (shapeObj.type === "text") {
+        textSizeGroup.style.display = "flex";
+        cpFontSize.value = parseInt(window.getComputedStyle(shapeObj.element).fontSize) || 16;
+      } else {
+        textSizeGroup.style.display = "none";
+      }
       const rect = shapeObj.element.getBoundingClientRect();
       const canvasRect = canvas.getBoundingClientRect();
       let top = rect.top - canvasRect.top - colorPanel.offsetHeight - 6;
-      if (top < 0) { top = rect.bottom - canvasRect.top + 6; }
+      if (top < 0) top = rect.bottom - canvasRect.top + 6;
       colorPanel.style.left = (rect.left - canvasRect.left + 4) + "px";
       colorPanel.style.top = top + "px";
       colorPanel.style.display = "flex";
     }
-    function hideColorPanel() {
-      colorPanel.style.display = "none";
-    }
+    function hideColorPanel() { colorPanel.style.display = "none"; }
     cpFillColor.addEventListener("input", updateShapeStyle);
     cpFillOpacity.addEventListener("input", updateShapeStyle);
     cpBorderColor.addEventListener("input", updateShapeStyle);
     cpBorderOpacity.addEventListener("input", updateShapeStyle);
     cpBorderWidth.addEventListener("input", updateShapeStyle);
-    cpWidth.addEventListener("input", () => {
-      if (selectedShape) {
-        selectedShape.element.style.width = cpWidth.value + "px";
-        showColorPanel(selectedShape);
-      }
-    });
-    cpHeight.addEventListener("input", () => {
-      if (selectedShape) {
-        selectedShape.element.style.height = cpHeight.value + "px";
-        showColorPanel(selectedShape);
-      }
-    });
+    cpWidth.addEventListener("input", () => { if (selectedShape) { selectedShape.element.style.width = cpWidth.value + "px"; showColorPanel(selectedShape); } });
+    cpHeight.addEventListener("input", () => { if (selectedShape) { selectedShape.element.style.height = cpHeight.value + "px"; showColorPanel(selectedShape); } });
+    cpAngle.addEventListener("input", () => { if (selectedShape) { let angle = parseFloat(cpAngle.value) || 0; selectedShape.element.style.transform = `rotate(${angle}deg)`; showColorPanel(selectedShape); } });
+    cpFontSize.addEventListener("input", () => { if (selectedShape && selectedShape.type === "text") { selectedShape.element.style.fontSize = cpFontSize.value + "px"; } });
     cpClose.addEventListener("click", hideColorPanel);
     function updateShapeStyle() {
       if (!selectedShape) return;
@@ -771,30 +685,31 @@
 
     /* Создание фигур */
     function createArrow(e) {
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const pos = getMousePos(e);
       const id = generateId();
       const arrowContainer = document.createElement("div");
       arrowContainer.classList.add("arrow-container");
       arrowContainer.dataset.id = id;
-      arrowContainer.style.left = x + "px";
-      arrowContainer.style.top = y + "px";
+      arrowContainer.style.left = pos.x + "px";
+      arrowContainer.style.top = pos.y + "px";
       arrowContainer.style.zIndex = shapes.length + 1;
-      // Стержень
-      const arrowShaft = document.createElement("div");
-      arrowShaft.classList.add("arrow-shaft");
+      arrowContainer.addEventListener("mousedown", e => {
+        e.stopPropagation();
+        selectedShape = shapes.find(s => s.id === id);
+        updateSelectionUI();
+        showColorPanel(selectedShape);
+      });
       const bw = parseInt(cpBorderWidth.value) || 1;
-      arrowShaft.style.height = bw + "px";
       const bRgb = hexToRgb(cpBorderColor.value);
       const bOp = parseFloat(cpBorderOpacity.value) || 1;
       const borderColor = `rgba(${bRgb.r},${bRgb.g},${bRgb.b},${bOp})`;
+      const arrowShaft = document.createElement("div");
+      arrowShaft.classList.add("arrow-shaft");
+      arrowShaft.style.height = bw + "px";
       arrowShaft.style.backgroundColor = borderColor;
-      // Наконечник
       const arrowHead = document.createElement("div");
       arrowHead.classList.add("arrow-head");
       arrowHead.style.borderLeft = "10px solid " + borderColor;
-      // Ручки для редактирования
       const startHandle = document.createElement("div");
       startHandle.classList.add("arrow-handle");
       const endHandle = document.createElement("div");
@@ -811,18 +726,17 @@
         head: arrowHead,
         type: "arrow",
         zIndex: shapes.length + 1,
-        startX: x, startY: y,
-        endX: x, endY: y,
+        startX: pos.x, startY: pos.y,
+        endX: pos.x, endY: pos.y,
         startHandle, endHandle
       };
       shapes.push(arrowObj);
       selectShape(arrowObj);
       addArrowHandleEvents(arrowObj);
       function mouseMove(ev) {
-        const nx = ev.clientX - rect.left;
-        const ny = ev.clientY - rect.top;
-        arrowObj.endX = nx;
-        arrowObj.endY = ny;
+        const pos2 = getMousePos(ev);
+        arrowObj.endX = pos2.x;
+        arrowObj.endY = pos2.y;
         updateArrowUI(arrowObj);
       }
       function mouseUp() {
@@ -834,12 +748,9 @@
     }
     function updateArrowUI(arrowObj) {
       const { startX, startY, endX, endY, element, shaft, head, startHandle, endHandle } = arrowObj;
-      const dx = endX - startX;
-      const dy = endY - startY;
+      const dx = endX - startX, dy = endY - startY;
       const length = Math.sqrt(dx * dx + dy * dy);
-      // Поворот
       const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-      // Устанавливаем положение контейнера в точке начала
       element.style.left = startX + "px";
       element.style.top = startY + "px";
       element.style.transformOrigin = "0 0";
@@ -848,7 +759,6 @@
       head.style.left = (length - 10) + "px";
       head.style.top = "50%";
       head.style.transform = "translateY(-50%)";
-      // Ручки
       startHandle.style.left = "0px";
       startHandle.style.top = "50%";
       endHandle.style.left = length + "px";
@@ -860,8 +770,9 @@
         e.stopPropagation();
         const rect = canvas.getBoundingClientRect();
         function onMouseMove(ev) {
-          arrowObj.startX = snapToGridCheckbox.checked ? snap(ev.clientX - rect.left, GRID_SIZE) : ev.clientX - rect.left;
-          arrowObj.startY = snapToGridCheckbox.checked ? snap(ev.clientY - rect.top, GRID_SIZE) : ev.clientY - rect.top;
+          const pos = { x: (ev.clientX - rect.left) / canvasScale, y: (ev.clientY - rect.top) / canvasScale };
+          arrowObj.startX = snapToGridCheckbox.checked ? snap(pos.x, GRID_SIZE) : pos.x;
+          arrowObj.startY = snapToGridCheckbox.checked ? snap(pos.y, GRID_SIZE) : pos.y;
           updateArrowUI(arrowObj);
         }
         function onMouseUp() {
@@ -875,8 +786,9 @@
         e.stopPropagation();
         const rect = canvas.getBoundingClientRect();
         function onMouseMove(ev) {
-          arrowObj.endX = snapToGridCheckbox.checked ? snap(ev.clientX - rect.left, GRID_SIZE) : ev.clientX - rect.left;
-          arrowObj.endY = snapToGridCheckbox.checked ? snap(ev.clientY - rect.top, GRID_SIZE) : ev.clientY - rect.top;
+          const pos = { x: (ev.clientX - rect.left) / canvasScale, y: (ev.clientY - rect.top) / canvasScale };
+          arrowObj.endX = snapToGridCheckbox.checked ? snap(pos.x, GRID_SIZE) : pos.x;
+          arrowObj.endY = snapToGridCheckbox.checked ? snap(pos.y, GRID_SIZE) : pos.y;
           updateArrowUI(arrowObj);
         }
         function onMouseUp() {
@@ -888,20 +800,18 @@
       });
     }
     function createTextShape(e) {
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const pos = getMousePos(e);
       const id = generateId();
       const el = document.createElement("div");
       el.classList.add("shape", "shape-text");
       el.dataset.id = id;
-      el.style.left = x + "px";
-      el.style.top = y + "px";
-      el.style.border = "none";
+      el.style.left = pos.x + "px";
+      el.style.top = pos.y + "px";
+      el.style.border = "1px solid var(--color-border)";
+      el.style.backgroundColor = "#fff";
       el.contentEditable = "true";
       el.innerText = "";
       canvas.appendChild(el);
-      // Сразу фокус для редактирования (многострочный текст)
       setTimeout(() => { el.focus(); }, 0);
       const shapeObj = { id, element: el, type: "text", zIndex: shapes.length + 1 };
       shapes.push(shapeObj);
@@ -945,9 +855,9 @@
         const offsetX = e.offsetX;
         const offsetY = e.offsetY;
         function mouseMove(ev) {
-          const rect = canvas.getBoundingClientRect();
-          let left = ev.clientX - rect.left - offsetX;
-          let top = ev.clientY - rect.top - offsetY;
+          const pos = getMousePos(ev);
+          let left = pos.x - offsetX;
+          let top = pos.y - offsetY;
           if (snapToGridCheckbox.checked) {
             left = snap(left, GRID_SIZE);
             top = snap(top, GRID_SIZE);
@@ -967,18 +877,11 @@
     /* Рисование */
     canvas.addEventListener("mousedown", e => {
       if (selectedShapeType === "pointer") return;
-      if (selectedShapeType === "arrow") {
-        createArrow(e);
-        return;
-      }
-      if (selectedShapeType === "text") {
-        createTextShape(e);
-        return;
-      }
+      if (selectedShapeType === "arrow") { createArrow(e); return; }
+      if (selectedShapeType === "text") { createTextShape(e); return; }
       isDrawing = true;
-      const rect = canvas.getBoundingClientRect();
-      startX = e.clientX - rect.left;
-      startY = e.clientY - rect.top;
+      const pos = getMousePos(e);
+      startX = pos.x; startY = pos.y;
       currentShape = createRectOrCircle();
       currentShape.element.style.left = startX + "px";
       currentShape.element.style.top = startY + "px";
@@ -987,13 +890,11 @@
     });
     canvas.addEventListener("mousemove", e => {
       if (!isDrawing || !currentShape) return;
-      const rect = canvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-      let left = Math.min(startX, mouseX);
-      let top = Math.min(startY, mouseY);
-      let width = Math.abs(mouseX - startX);
-      let height = Math.abs(mouseY - startY);
+      const pos = getMousePos(e);
+      let left = Math.min(startX, pos.x);
+      let top = Math.min(startY, pos.y);
+      let width = Math.abs(pos.x - startX);
+      let height = Math.abs(pos.y - startY);
       if (snapToGridCheckbox.checked) {
         left = snap(left, GRID_SIZE);
         top = snap(top, GRID_SIZE);
@@ -1004,9 +905,7 @@
       currentShape.element.style.top = top + "px";
       currentShape.element.style.width = width + "px";
       currentShape.element.style.height = height + "px";
-      if (currentShape.type === "circle") {
-        currentShape.element.style.borderRadius = "50%";
-      }
+      if (currentShape.type === "circle") { currentShape.element.style.borderRadius = "50%"; }
       showColorPanel(currentShape);
     });
     canvas.addEventListener("mouseup", () => {
@@ -1034,32 +933,18 @@
       el.appendChild(resize);
       resize.addEventListener("mousedown", e => {
         e.stopPropagation();
-        const initX = e.clientX;
-        const initY = e.clientY;
-        const initW = parseInt(el.style.width);
-        const initH = parseInt(el.style.height);
-        const left = parseInt(el.style.left);
-        const top = parseInt(el.style.top);
-        function mouseMove(ev) {
-          const dx = ev.clientX - initX;
-          const dy = ev.clientY - initY;
-          let newW = initW + dx;
-          let newH = initH + dy;
-          if (newW < 0) {
-            el.style.left = (left + newW) + "px";
-            newW = Math.abs(newW);
-          }
-          if (newH < 0) {
-            el.style.top = (top + newH) + "px";
-            newH = Math.abs(newH);
-          }
+        const initX = e.clientX, initY = e.clientY;
+        const initW = parseInt(el.style.width), initH = parseInt(el.style.height);
+        const left = parseInt(el.style.left), top = parseInt(el.style.top);
+        function onMouseMove(ev) {
+          const dx = ev.clientX - initX, dy = ev.clientY - initY;
+          let newW = initW + dx, newH = initH + dy;
+          if (newW < 0) { el.style.left = (left + newW) + "px"; newW = Math.abs(newW); }
+          if (newH < 0) { el.style.top = (top + newH) + "px"; newH = Math.abs(newH); }
           if (ev.shiftKey) {
             const ratio = initW / initH || 1;
-            if (Math.abs(dx) > Math.abs(dy)) {
-              newH = newW / ratio;
-            } else {
-              newW = newH * ratio;
-            }
+            if (Math.abs(dx) > Math.abs(dy)) { newH = newW / ratio; }
+            else { newW = newH * ratio; }
           }
           if (snapToGridCheckbox.checked) {
             newW = snap(newW, GRID_SIZE);
@@ -1067,19 +952,15 @@
           }
           el.style.width = newW + "px";
           el.style.height = newH + "px";
-          // Обновляем размеры в панели
           const s = shapes.find(s => s.element === el);
-          if (s) {
-            cpWidth.value = newW;
-            cpHeight.value = newH;
-          }
+          if (s) { cpWidth.value = newW; cpHeight.value = newH; }
           showColorPanel(shapes.find(s => s.element === el));
         }
         function onMouseUp() {
-          document.removeEventListener("mousemove", mouseMove);
+          document.removeEventListener("mousemove", onMouseMove);
           document.removeEventListener("mouseup", onMouseUp);
         }
-        document.addEventListener("mousemove", mouseMove);
+        document.addEventListener("mousemove", onMouseMove);
         document.addEventListener("mouseup", onMouseUp);
       });
     }
@@ -1093,15 +974,13 @@
         const rect = canvas.getBoundingClientRect();
         const centerX = el.offsetLeft + el.offsetWidth/2;
         const centerY = el.offsetTop + el.offsetHeight/2;
-        const startAngle = getCurrentRotation(el);
         function onMouseMove(ev) {
-          const mouseX = ev.clientX - rect.left;
-          const mouseY = ev.clientY - rect.top;
-          const dx = mouseX - centerX;
-          const dy = mouseY - centerY;
+          const mouseX = (ev.clientX - rect.left) / canvasScale;
+          const mouseY = (ev.clientY - rect.top) / canvasScale;
+          const dx = mouseX - centerX, dy = mouseY - centerY;
           let angle = Math.atan2(dy, dx) * (180/Math.PI);
           el.style.transform = `rotate(${angle}deg)`;
-          showColorPanel(shapes.find(s=>s.element===el));
+          showColorPanel(shapes.find(s => s.element === el));
         }
         function onMouseUp() {
           document.removeEventListener("mousemove", onMouseMove);
@@ -1117,10 +996,7 @@
         const last = shapes.pop();
         redoStack.push(last);
         last.element.remove();
-        if (selectedShape && selectedShape.id === last.id) {
-          selectedShape = null;
-          hideColorPanel();
-        }
+        if (selectedShape && selectedShape.id === last.id) { selectedShape = null; hideColorPanel(); }
         renderLayers();
       }
     });
@@ -1129,10 +1005,7 @@
         const shapeObj = redoStack.pop();
         shapes.push(shapeObj);
         canvas.appendChild(shapeObj.element);
-        if (shapeObj.type === "arrow") {
-          addArrowHandleEvents(shapeObj);
-          updateArrowUI(shapeObj);
-        }
+        if (shapeObj.type === "arrow") { addArrowHandleEvents(shapeObj); updateArrowUI(shapeObj); }
         reassignZIndices();
       }
     });
