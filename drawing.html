@@ -525,6 +525,10 @@
   <!-- Основной скрипт для рисования и редактирования -->
   <script>
     "use strict";
+    // Sign in/out
+    document.getElementById('signin_button').onclick = handleSignInClick;
+    document.getElementById('signout_button').onclick = handleSignOutClick;
+
     const canvas = document.querySelector(".canvas");
     const snapToGridCheckbox = document.getElementById("snapToGrid");
     const shapeIcons = document.querySelectorAll(".icon");
