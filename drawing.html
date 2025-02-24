@@ -366,11 +366,12 @@
   <script>
     "use strict";
     // Постоянное сохранение входа: если токен есть в localStorage, используем его
-    
+    let accessToken = null
+    if (localStorage.getItem("accessToken")) {
       accessToken = localStorage.getItem("accessToken");
       document.getElementById('signin_button').style.display = 'none';
       document.getElementById('signout_button').style.display = 'block';
-    
+    }
     const CLIENT_ID = "158627123477-4m4d7dqms8ndlmfq4mejhdguj1jte08m.apps.googleusercontent.com";
     const SCOPES = "https://www.googleapis.com/auth/drive.file";
     let tokenClient = null;
