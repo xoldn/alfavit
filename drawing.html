@@ -266,7 +266,7 @@
   <div class="sidebar">
     <div class="sidebar-header">
       <h2>Инструменты</h2>
-      <div class="version">Version 1.0.1</div>
+      <div class="version">Version 1.0.2</div>
     </div>
     <div class="toolbar">
       <!-- Порядок: Указатель, Квадрат, Круг, Стрелка, Текст -->
@@ -440,86 +440,211 @@
     // Глобальная переменная для хранения идентификатора папки
     let driveFolderId = null;
     const DRIVE_FOLDER_NAME = "DrawingAppFiles";
+    let selectedDriveFileId = null; // для выделения выбранного файла
 
-    // Функция для получения или создания папки в Google Drive
+    // Функция для поиска или создания папки
     async function getOrCreateFolder(folderName) {
-      // Поиск папки по имени
-      const query = encodeURIComponent(`mimeType='application/vnd.google-apps.folder' and name='${folderName}' and trashed=false`);
+      const query = encodeURIComponent(
+        `mimeType='application/vnd.google-apps.folder' and name='${folderName}' and trashed=false`
+      );
       const url = `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`;
       const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
       const data = await resp.json();
       if (data.files && data.files.length > 0) {
         return data.files[0].id;
       }
-      // Если папка не найдена, создаём её
-      const metadata = {
-        name: folderName,
-        mimeType: "application/vnd.google-apps.folder"
-      };
+      // Если папки нет, создаём её
+      const metadata = { name: folderName, mimeType: "application/vnd.google-apps.folder" };
       const form = new FormData();
       form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
-      const createResp = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}` },
-        body: form
-      });
+      const createResp = await fetch(
+        "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+        { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: form }
+      );
       const result = await createResp.json();
       return result.id;
     }
 
+    // Обновлённая функция загрузки списка файлов
+    async function listFiles() {
+      if (!accessToken) {
+        console.warn("Нет access token. Сначала войдите.");
+        return;
+      }
+      const fileListElem = document.getElementById("driveFileList");
+      fileListElem.innerHTML = '<p>Загрузка файлов...</p>';
+      try {
+        const resp = await fetch(
+          "https://www.googleapis.com/drive/v3/files?pageSize=50&q=mimeType!='application/vnd.google-apps.folder' and trashed=false&fields=files(id,name)",
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        const data = await resp.json();
+        fileListElem.innerHTML = "";
+        if (data.files && data.files.length > 0) {
+          data.files.forEach(file => {
+            // Создаём контейнер для файла
+            const div = document.createElement("div");
+            div.classList.add("drive-file");
+            // Сохраняем id файла в data-атрибуте (но не показываем его)
+            div.dataset.fileId = file.id;
+            // Создаём элемент для имени файла
+            const nameSpan = document.createElement("span");
+            nameSpan.textContent = file.name;
+            nameSpan.style.cursor = "pointer";
+            // При одиночном клике выбираем файл (выделяем и загружаем содержимое)
+            div.addEventListener("click", () => {
+              selectedDriveFileId = file.id;
+              // Выделяем выбранный элемент
+              document.querySelectorAll(".drive-file").forEach(item => item.classList.remove("selected"));
+              div.classList.add("selected");
+              loadFileFromDrive(file.id);
+            });
+            // Двойной клик по имени позволяет переименовать файл
+            nameSpan.addEventListener("dblclick", e => {
+              e.stopPropagation();
+              const input = document.createElement("input");
+              input.type = "text";
+              input.value = file.name;
+              input.style.width = "80%";
+              div.replaceChild(input, nameSpan);
+              input.focus();
+              input.addEventListener("blur", () => {
+                const newName = input.value;
+                renameFileInDrive(file.id, newName);
+                nameSpan.textContent = newName;
+                div.replaceChild(nameSpan, input);
+              });
+              input.addEventListener("keydown", ev => {
+                if (ev.key === "Enter") input.blur();
+              });
+            });
+            div.appendChild(nameSpan);
+            fileListElem.appendChild(div);
+          });
+        } else {
+          fileListElem.innerHTML = "<p>Файлы не найдены.</p>";
+        }
+      } catch (err) {
+        console.error("Ошибка при получении списка файлов", err);
+        fileListElem.innerHTML = "<p>Ошибка загрузки файлов.</p>";
+      }
+    }
+
+    // Функция переименования файла
+    async function renameFileInDrive(fileId, newName) {
+      try {
+        const metadata = { name: newName };
+        await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(metadata)
+        });
+      } catch (error) {
+        console.error("Ошибка при переименовании файла", error);
+      }
+    }
+
+    // Функция загрузки файла с Drive для редактирования
+    async function loadFileFromDrive(fileId) {
+      try {
+        const canvasContainer = document.querySelector(".canvas-container");
+        // Показываем визуальный индикатор загрузки
+        const spinner = document.createElement("div");
+        spinner.textContent = "Загрузка...";
+        spinner.style.position = "absolute";
+        spinner.style.top = "50%";
+        spinner.style.left = "50%";
+        spinner.style.transform = "translate(-50%, -50%)";
+        spinner.style.background = "rgba(255,255,255,0.8)";
+        spinner.style.padding = "10px";
+        spinner.style.borderRadius = "8px";
+        canvasContainer.appendChild(spinner);
+        const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        const fileContent = await resp.text();
+        // Заменяем содержимое холста на загруженное
+        const canvas = document.querySelector(".canvas");
+        canvas.innerHTML = fileContent;
+        // Удаляем индикатор загрузки
+        canvasContainer.removeChild(spinner);
+        // Сохраняем выбранный файл для дальнейшего редактирования
+        currentFileId = fileId;
+      } catch (error) {
+        console.error("Ошибка загрузки файла", error);
+      }
+    }
+
+    // Функция создания файла с сохранением в папку Drive
     async function createFileOnDrive() {
       try {
-        // Получаем папку (создаём, если отсутствует)
+        // Получаем или создаём папку для файлов приложения
         driveFolderId = await getOrCreateFolder(DRIVE_FOLDER_NAME);
-        const contentHtml = document.querySelector('.canvas').outerHTML;
-        const contentBlob = new Blob([contentHtml], { type: 'text/html' });
+        const contentHtml = document.querySelector(".canvas").outerHTML;
+        const contentBlob = new Blob([contentHtml], { type: "text/html" });
         const metadata = {
-          name: 'drawing.html',
-          mimeType: 'text/html',
-          parents: [driveFolderId] // сохраняем в нашей папке
+          name: "drawing.html",
+          mimeType: "text/html",
+          parents: [driveFolderId]
         };
         const form = new FormData();
-        form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-        form.append('file', contentBlob);
-        const resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-          method: 'POST',
+        form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+        form.append("file", contentBlob);
+        const resp = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+          method: "POST",
           headers: { Authorization: `Bearer ${accessToken}` },
           body: form
         });
         const result = await resp.json();
         currentFileId = result.id;
-        alert('Файл сохранён в Drive: ' + currentFileId);
+        // Вместо alert показываем сообщение в интерфейсе (например, можно обновить список файлов)
         listFiles();
       } catch (error) {
-        console.error('Ошибка создания файла', error);
+        console.error("Ошибка создания файла", error);
       }
     }
 
+    // Функция обновления (сохранения) файла
     async function updateFileOnDrive(fileId) {
       try {
-        const contentHtml = document.querySelector('.canvas').outerHTML;
-        const contentBlob = new Blob([contentHtml], { type: 'text/html' });
+        const contentHtml = document.querySelector(".canvas").outerHTML;
+        const contentBlob = new Blob([contentHtml], { type: "text/html" });
         const metadata = {
-          name: 'drawing.html',
-          mimeType: 'text/html',
-          parents: driveFolderId ? [driveFolderId] : [] // используем существующую папку, если есть
+          name: "drawing.html",
+          mimeType: "text/html",
+          parents: driveFolderId ? [driveFolderId] : []
         };
         const form = new FormData();
-        form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-        form.append('file', contentBlob);
+        form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+        form.append("file", contentBlob);
         await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`, {
-          method: 'PATCH',
+          method: "PATCH",
           headers: { Authorization: `Bearer ${accessToken}` },
           body: form
         });
-        alert('Файл обновлён в Drive');
         listFiles();
       } catch (error) {
-        console.error('Ошибка обновления файла', error);
+        console.error("Ошибка обновления файла", error);
       }
     }
+
+    // Обработчики кнопок Drive
     document.getElementById("driveSave").addEventListener("click", saveToDrive);
     document.getElementById("driveOpen").addEventListener("click", listFiles);
+    async function saveToDrive() {
+      if (!accessToken) {
+        console.warn("Нет access token для сохранения.");
+        return;
+      }
+      if (!currentFileId) {
+        await createFileOnDrive();
+      } else {
+        await updateFileOnDrive(currentFileId);
+      }
+    }
   </script>
 
   <!-- Основной скрипт для рисования и редактирования -->
