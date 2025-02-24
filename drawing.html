@@ -266,7 +266,7 @@
   <div class="sidebar">
     <div class="sidebar-header">
       <h2>Инструменты</h2>
-      <div class="version">Version 1.0.2</div>
+      <div class="version">Version 1.0.3</div>
     </div>
     <div class="toolbar">
       <!-- Порядок: Указатель, Квадрат, Круг, Стрелка, Текст -->
@@ -547,6 +547,50 @@
       }
     }
 
+    // Функция, которая вызывается после загрузки содержимого из Google Drive,
+    // чтобы восстановить массив shapes и навесить обработчики на элементы холста.
+    function initializeCanvasFromLoadedContent() {
+      // Получаем все сохранённые элементы (фигуры и стрелки)
+      const loadedElements = document.querySelectorAll(".shape, .arrow-container");
+      shapes = [];
+      loadedElements.forEach(el => {
+        // Если data-id отсутствует, генерируем новый идентификатор
+        let id = el.dataset.id || generateId();
+        el.dataset.id = id;
+        // Определяем тип элемента:
+        let type = "other";
+        if (el.classList.contains("arrow-container")) {
+          type = "arrow";
+        } else if (el.classList.contains("shape-text")) {
+          type = "text";
+        } else if (el.classList.contains("circle")) {
+          type = "circle";
+        } else {
+          type = "rectangle";
+        }
+        // Добавляем объект в массив shapes
+        shapes.push({ id: id, element: el, type: type, zIndex: parseInt(el.style.zIndex) || 1 });
+        // Навешиваем обработчики событий для редактирования
+        addShapeEventListeners(el);
+        if (type === "arrow") {
+          // Для стрелок нужно добавить обработчики для ручек
+          addArrowHandleEvents({
+            id: id,
+            element: el,
+            shaft: el.querySelector(".arrow-shaft"),
+            head: el.querySelector(".arrow-head"),
+            startHandle: el.querySelectorAll(".arrow-handle")[0],
+            endHandle: el.querySelectorAll(".arrow-handle")[1]
+          });
+        } else {
+          addResizeHandle(el);
+          addRotateHandle(el);
+        }
+      });
+      renderLayers();
+    }
+
+
     // Функция загрузки файла с Drive для редактирования
     async function loadFileFromDrive(fileId) {
       try {
@@ -569,6 +613,7 @@
         // Заменяем содержимое холста на загруженное
         const canvas = document.querySelector(".canvas");
         canvas.innerHTML = fileContent;
+        initializeCanvasFromLoadedContent()
         // Удаляем индикатор загрузки
         canvasContainer.removeChild(spinner);
         // Сохраняем выбранный файл для дальнейшего редактирования
