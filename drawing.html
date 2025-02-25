@@ -275,7 +275,7 @@
   <div class="sidebar">
     <div class="sidebar-header">
       <h2>Инструменты</h2>
-      <div class="version">Version Final.1.0.8</div>
+      <div class="version">Version Final.1.0.9</div>
     </div>
     <div class="toolbar">
       <!-- Порядок: Указатель, Квадрат, Круг, Стрелка, Текст -->
@@ -353,30 +353,33 @@
     // Постоянное сохранение входа: если токен есть в localStorage, используем его
     let accessToken = null;
     let selectedDriveFileId = null;
+    
+    const CLIENT_ID = "158627123477-4m4d7dqms8ndlmfq4mejhdguj1jte08m.apps.googleusercontent.com";
+    const SCOPES = "https://www.googleapis.com/auth/drive.file";
+    let tokenClient = null;
+    let currentFileId = null;
+
     if (localStorage.getItem("accessToken")) {
       accessToken = localStorage.getItem("accessToken");
       document.getElementById('signin_button').style.display = 'none';
       document.getElementById('signout_button').style.display = 'block';
       listFiles();
+    } else {
+      window.onload = () => {
+        tokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: CLIENT_ID,
+          scope: SCOPES,
+          callback: (tokenResponse) => {
+            accessToken = tokenResponse.access_token;
+            localStorage.setItem("accessToken", accessToken);
+            document.getElementById('signin_button').style.display = 'none';
+            document.getElementById('signout_button').style.display = 'block';
+            console.log("Access token получен:", accessToken);
+            listFiles();
+          },
+        });
+      };
     }
-    const CLIENT_ID = "158627123477-4m4d7dqms8ndlmfq4mejhdguj1jte08m.apps.googleusercontent.com";
-    const SCOPES = "https://www.googleapis.com/auth/drive.file";
-    let tokenClient = null;
-    let currentFileId = null;
-    window.onload = () => {
-      tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: CLIENT_ID,
-        scope: SCOPES,
-        callback: (tokenResponse) => {
-          accessToken = tokenResponse.access_token;
-          localStorage.setItem("accessToken", accessToken);
-          document.getElementById('signin_button').style.display = 'none';
-          document.getElementById('signout_button').style.display = 'block';
-          console.log("Access token получен:", accessToken);
-          listFiles();
-        },
-      });
-    };
     function handleSignInClick() { tokenClient.requestAccessToken({ prompt: "" }); }
     function handleSignOutClick() {
       if (accessToken) {
@@ -385,6 +388,7 @@
           headers: { "Content-type": "application/x-www-form-urlencoded" }
         }).then(() => console.log("Token revoked")).catch(err => console.error(err));
       }
+      accessToken = null;
       localStorage.removeItem("accessToken");
       currentFileId = null;
       document.getElementById('driveFileList').innerHTML = '';
