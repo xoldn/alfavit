@@ -470,6 +470,63 @@
     }
     let driveFolderId = null;
     const DRIVE_FOLDER_NAME = "DrawingAppFiles";
+
+    function initializeCanvasFromLoadedContent() {
+      const loadedElements = document.querySelectorAll(".shape, .arrow-container");
+      shapes = [];
+      loadedElements.forEach(el => {
+        let id = el.dataset.id || generateId();
+        el.dataset.id = id;
+        let type = "other";
+        if (el.classList.contains("arrow-container")) type = "arrow";
+        else if (el.classList.contains("shape-text")) type = "text";
+        else if (el.classList.contains("circle")) type = "circle";
+        else type = "rectangle";
+        shapes.push({ id: id, element: el, type: type, zIndex: parseInt(el.style.zIndex) || 1 });
+        addShapeEventListeners(el);
+        if (type === "arrow") {
+          addArrowHandleEvents({
+            id: id,
+            element: el,
+            shaft: el.querySelector(".arrow-shaft"),
+            head: el.querySelector(".arrow-head"),
+            startHandle: el.querySelectorAll(".arrow-handle")[0],
+            endHandle: el.querySelectorAll(".arrow-handle")[1]
+          });
+        } else {
+          addResizeHandle(el);
+          addRotateHandle(el);
+        }
+      });
+      renderLayers();
+    }
+
+    async function loadFileFromDrive(fileId) {
+      if (!accessToken) { alert("Нет access token"); return; }
+      try {
+        const canvasContainer = document.querySelector(".canvas-container");
+        const spinner = document.createElement("div");
+        spinner.textContent = "Загрузка...";
+        spinner.style.position = "absolute";
+        spinner.style.top = "50%";
+        spinner.style.left = "50%";
+        spinner.style.transform = "translate(-50%, -50%)";
+        spinner.style.background = "rgba(255,255,255,0.8)";
+        spinner.style.padding = "10px";
+        spinner.style.borderRadius = "8px";
+        canvasContainer.appendChild(spinner);
+        const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        const fileContent = await resp.text();
+        const canvas = document.querySelector(".canvas");
+        canvas.innerHTML = fileContent;
+        initializeCanvasFromLoadedContent();
+        canvasContainer.removeChild(spinner);
+        currentFileId = fileId;
+      } catch (error) { console.error("Ошибка загрузки файла", error); }
+    }
+
     async function createFileOnDrive() {
       try {
         driveFolderId = await getOrCreateFolder(DRIVE_FOLDER_NAME);
