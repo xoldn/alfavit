@@ -318,6 +318,7 @@
         <button id="signin_button">Войти</button>
         <button id="signout_button" style="display:none;">Выйти</button>
         <button id="driveSave">Сохранить</button>
+        <button id="newFile">Создай файл</button>
       </div>
       <div id="driveFileList" style="max-height:120px; overflow-y:auto;"></div>
     </div>
@@ -527,6 +528,22 @@
       } catch (error) { console.error("Ошибка загрузки файла", error); }
     }
 
+    async function newFile() {
+      const canvas = document.querySelector(".canvas");
+      if (!currentFileId) {
+        // Если текущего файла нет, сохраняем новый файл с содержимым холста
+        await createFileOnDrive();
+      } else {
+        // Если выбран уже какой-либо файл, создаём новый файл с пустым холстом
+        canvas.innerHTML = ""; // Очищаем холст
+        shapes = [];          // Сбрасываем массив фигур
+        renderLayers();       // Обновляем список слоёв
+        currentFileId = null; // Сбрасываем текущий id файла
+        await createFileOnDrive(); // Создаём новый файл (он будет пустым)
+      }
+    }
+
+
     async function createFileOnDrive() {
       try {
         driveFolderId = await getOrCreateFolder(DRIVE_FOLDER_NAME);
@@ -573,6 +590,7 @@
     // Привязываем обработчики кнопок Drive
     document.getElementById('signin_button').onclick = handleSignInClick;
     document.getElementById('signout_button').onclick = handleSignOutClick;
+    document.getElementById("newFile").onclick = newFile;
     document.getElementById('driveSave').onclick = saveToDrive;
     async function saveToDrive() {
       if (!accessToken) { console.warn("Нет access token для сохранения."); return; }
