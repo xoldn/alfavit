@@ -251,7 +251,7 @@
     }
     .arrow-container.selected .arrow-handle { display: block; }
     /* Стили для кнопок Google Drive */
-    #signin_button, #signout_button, #driveSave {
+    #signin_button, #signout_button, #driveSave #newFile {
       background: var(--color-primary);
       color: #fff;
       border: none;
@@ -260,7 +260,7 @@
       cursor: pointer;
       transition: background var(--transition-speed);
     }
-    #signin_button:hover, #signout_button:hover, #driveSave:hover { background: var(--color-accent); }
+    #signin_button:hover, #signout_button:hover, #driveSave:hover #newFile:hover { background: var(--color-accent); }
     /* Стили для списка файлов Drive */
     .drive-file {
       padding: 4px 8px;
@@ -275,7 +275,7 @@
   <div class="sidebar">
     <div class="sidebar-header">
       <h2>Инструменты</h2>
-      <div class="version">Version Final.1.0.6</div>
+      <div class="version">Version Final.1.0.7</div>
     </div>
     <div class="toolbar">
       <!-- Порядок: Указатель, Квадрат, Круг, Стрелка, Текст -->
@@ -541,6 +541,10 @@
         currentFileId = null; // Сбрасываем текущий id файла
         await createFileOnDrive(); // Создаём новый файл (он будет пустым)
       }
+      const newFileDiv = document.querySelector(`.drive-file[data-file-id="${currentFileId}"]`);
+      if (newFileDiv) {
+        newFileDiv.classList.add("selected");
+      }
     }
 
 
@@ -565,6 +569,7 @@
     }
     async function updateFileOnDrive(fileId) {
       try {
+        driveFolderId = await getOrCreateFolder(DRIVE_FOLDER_NAME);
         const contentHtml = document.querySelector(".canvas").outerHTML;
         const contentBlob = new Blob([contentHtml], { type: "text/html" });
         const metadata = { name: "drawing.html", mimeType: "text/html", parents: driveFolderId ? [driveFolderId] : [] };
