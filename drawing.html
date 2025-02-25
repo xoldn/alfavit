@@ -275,7 +275,7 @@
   <div class="sidebar">
     <div class="sidebar-header">
       <h2>Инструменты</h2>
-      <div class="version">Version Final.1.0.7</div>
+      <div class="version">Version Final.1.0.8</div>
     </div>
     <div class="toolbar">
       <!-- Порядок: Указатель, Квадрат, Круг, Стрелка, Текст -->
@@ -385,7 +385,6 @@
           headers: { "Content-type": "application/x-www-form-urlencoded" }
         }).then(() => console.log("Token revoked")).catch(err => console.error(err));
       }
-      accessToken = null;
       localStorage.removeItem("accessToken");
       currentFileId = null;
       document.getElementById('driveFileList').innerHTML = '';
